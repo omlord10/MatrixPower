@@ -84,23 +84,11 @@ make
 Время выполнения: 123.45 микросекунд
 ```
 
-## CSV Output (Generator)
-
-**Header:**
-```
-matrix_size,exponent,field_size,matrix_data,result_data,computation_time_ns
-```
-
 Each row contains the input matrix and result in string format plus measured time in nanoseconds.
 
 ## Technologies Used 🛠
 
 [![My Skills](https://skillicons.dev/icons?i=c,clion)](https://skillicons.dev)
-
-## Error Handling
-
-The project uses `enum`-based error codes (MAIN, MATRIX, STRING, TEST, UI).  
-Errors are reported with readable messages and functions return codes for programmatic checks.
 
 ## License
 

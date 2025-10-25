@@ -7,7 +7,7 @@ Includes a CLI with manual input, predefined tests, and a test-data generator th
 ## Installation
 Build the project using the provided Makefile:
 ```bash
-git clone https://github.com/yourname/MatrixPower.git
+git clone https://github.com/omlord10/MatrixPower.git
 cd MatrixPower
 make
 ```
@@ -95,7 +95,7 @@ Each row contains the input matrix and result in string format plus measured tim
 
 ## Technologies Used 🛠
 
-[![C](https://skillicons.dev/icons?i=c)](https://en.wikipedia.org/wiki/C_%28programming_language%29)
+[![My Skills](https://skillicons.dev/icons?i=c,clion)](https://skillicons.dev)
 
 ## Error Handling
 
@@ -104,12 +104,8 @@ Errors are reported with readable messages and functions return codes for progra
 
 ## License
 
-This project is licensed under the MIT License.
-
-## Acknowledgements 🙏
-
-Thanks to the open-source community and contributors. Project ideas inspired by matrix-algorithms and benchmark utilities.
+This project is licensed under the GPL-3.0 License.
 
 ## Support 🙋‍♂️
 
-If you encounter issues, open an issue in the GitHub repository or contact: [support@example.com](mailto:support@example.com)
+If you encounter issues, open an issue in the GitHub repository.

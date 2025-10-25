@@ -88,7 +88,7 @@ Each row contains the input matrix and result in string format plus measured tim
 
 ## Technologies Used 🛠
 
-[![My Skills](https://skillicons.dev/icons?i=c,clion)](https://skillicons.dev)
+[![My Skills](https://skillicons.dev/icons?i=c,clion,cmake)](https://skillicons.dev)
 
 ## License
 

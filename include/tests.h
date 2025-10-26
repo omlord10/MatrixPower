@@ -1,32 +1,51 @@
 #ifndef LAB2_TESTS_H
 #define LAB2_TESTS_H
 
-#include "common.h"
-#include "matrix.h"
 #include "string_utils.h"
 
-/* Генерация случайной квадратной матрицы size x size (поле field_size).
-   result — выходной параметр. */
+/*
+ * Сгенерировать случайную квадратную матрицу size x size.
+ * Все элементы — случайные числа по модулю field_size.
+ * [IN] size — размер матрицы (количество строк и столбцов)
+ * [IN] field_size — размер конечного поля для модульной арифметики
+ * [OUT] result — указатель на созданную матрицу
+ * [RETURN] MATRIX_SUCCESS или код ошибки MATRIX_STATUS
+ */
 int generate_random_matrix(int size, unsigned long long field_size, Matrix** result);
 
-/* Генерация набора тестов и запись в CSV-файл.
-   filename — имя выходного файла,
-   min_size, max_size — диапазон размеров (включительно),
-   num_tests — число тестов,
-   min_exponent, max_exponent — диапазон степеней,
-   field_size — модуль.
-   Возвращает TEST_SUCCESS или код ошибки. */
+/*
+ * Сгенерировать набор тестов и сохранить в CSV-файл.
+ * CSV содержит: размер матрицы, степень, поле, матрица, результат, время выполнения.
+ * [IN] filename — имя выходного CSV-файла
+ * [IN] min_size, max_size — диапазон размеров матриц (включительно)
+ * [IN] num_tests — количество тестов
+ * [IN] min_exponent, max_exponent — диапазон степеней для возведения матрицы
+ * [IN] field_size — размер конечного поля
+ * [RETURN] TEST_SUCCESS или код ошибки TEST_STATUS
+ */
 int generate_test_cases(const char* filename, int min_size, int max_size, int num_tests,
                        unsigned long long min_exponent, unsigned long long max_exponent,
                        unsigned long long field_size);
 
-/* UI-ориентированные тесты (ручной ввод / предопределённые тесты).
-   Эти функции используются в main.c. */
-int file_operations_test(void);   /* режим генерации тестов (взаимодействие с пользователем) */
-int input_test(void);            /* ручной режим (ввод матрицы) */
-int manual_test(void);        /* набор предопределённых тестов */
+/*
+ * Генерация тестов с взаимодействием с пользователем (CSV-файл).
+ * Выполняется ввод параметров через консоль и генерация тестов.
+ * [RETURN] UI_SUCCESS или код ошибки UI_STATUS
+ */
+int file_operations_test(void);
 
-/* Запуск всех unit-тестов (если добавишь unit-тесты без UI). */
-int run_unit_tests(void);
+/*
+ * Ручной ввод матрицы и параметров для тестирования функций.
+ * Позволяет пользователю ввести матрицу и степень, выводит результат.
+ * [RETURN] UI_SUCCESS или код ошибки UI_STATUS
+ */
+int input_test(void);
+
+/*
+ * Предопределённые тесты для проверки функций работы с матрицами.
+ * Используется для быстрого тестирования без пользовательского ввода.
+ * [RETURN] UI_SUCCESS или код ошибки UI_STATUS
+ */
+int manual_test(void);
 
 #endif //LAB2_TESTS_H

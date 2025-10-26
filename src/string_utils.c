@@ -1,8 +1,12 @@
 #include "../include/string_utils.h"
 
-int string_to_matrix(const char* str, unsigned long long field_size, Matrix** result)
+int string_to_matrix(const char* str, ULL field_size, Matrix** result)
 {
-    if (!str || strlen(str) < 3)
+    if (!str)
+    {
+        return STRING_ERROR_NULL_POINTER;
+    }
+    if (strlen(str) < 3)
     {
         return STRING_ERROR_INVALID_FORMAT;
     }
@@ -54,7 +58,13 @@ int string_to_matrix(const char* str, unsigned long long field_size, Matrix** re
             if (buf_index > 0)
             {
                 buffer[buf_index] = '\0';
-                (*result)->data[row][col] = strtoull(buffer, NULL, 10) % field_size;
+                ULL value = strtoull(buffer, NULL, 10);
+                if (field_size != 0)
+                {
+                    value %= field_size;
+                }
+                (*result)->data[row][col] = value;
+
                 buf_index = 0;
                 col++;
             }
@@ -80,7 +90,12 @@ int string_to_matrix(const char* str, unsigned long long field_size, Matrix** re
     if (buf_index > 0)
     {
         buffer[buf_index] = '\0';
-        (*result)->data[row][col] = strtoull(buffer, NULL, 10) % field_size;
+        ULL value = strtoull(buffer, NULL, 10);
+        if (field_size != 0)
+        {
+            value %= field_size;
+        }
+        (*result)->data[row][col] = value;
     }
 
     return STRING_SUCCESS;
@@ -88,9 +103,9 @@ int string_to_matrix(const char* str, unsigned long long field_size, Matrix** re
 
 int matrix_to_string(const Matrix* matrix, char** result)
 {
-    if (!matrix)
+    if (!matrix || !result)
     {
-        return STRING_ERROR_INVALID_FORMAT;
+        return STRING_ERROR_NULL_POINTER;
     }
 
     if (matrix->rows <= 0 || matrix->cols <= 0)
@@ -104,22 +119,20 @@ int matrix_to_string(const Matrix* matrix, char** result)
     {
         for (int j = 0; j < matrix->cols; j++)
         {
-            unsigned long long num = matrix->data[i][j];
-            int digit_count = 0;
+            ULL num = matrix->data[i][j];
+            if (matrix->field_size != 0)
+            {
+                num %= matrix->field_size;
+            }
 
-            if (num == 0)
+            int digit_count = (num == 0) ? 1 : 0;
+            ULL temp = num;
+            while (temp > 0)
             {
-                digit_count = 1;
+                digit_count++;
+                temp /= 10;
             }
-            else
-            {
-                unsigned long long temp = num;
-                while (temp > 0)
-                {
-                    digit_count++;
-                    temp /= 10;
-                }
-            }
+
             total_chars += digit_count;
 
             if (j < matrix->cols - 1)
@@ -149,7 +162,12 @@ int matrix_to_string(const Matrix* matrix, char** result)
     {
         for (int j = 0; j < matrix->cols; j++)
         {
-            unsigned long long num = matrix->data[i][j];
+            ULL num = matrix->data[i][j];
+            if (matrix->field_size != 0)
+            {
+                num %= matrix->field_size;
+            }
+
             char buffer[32];
             int buf_pos = 0;
 
@@ -159,7 +177,7 @@ int matrix_to_string(const Matrix* matrix, char** result)
             }
             else
             {
-                unsigned long long temp = num;
+                ULL temp = num;
                 char digits[32];
                 int digit_count = 0;
 
@@ -176,7 +194,6 @@ int matrix_to_string(const Matrix* matrix, char** result)
             }
 
             buffer[buf_pos] = '\0';
-
             for (int k = 0; k < buf_pos; k++)
             {
                 str_result[pos++] = buffer[k];

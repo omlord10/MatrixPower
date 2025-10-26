@@ -46,6 +46,7 @@ int generate_test_cases(const char* filename, int min_size, int max_size, int nu
 
         printf("Генерация теста %d/%d: матрица %dx%d, степень %llu... ",
                test + 1, num_tests, size, size, exponent);
+        while (getchar() != '\n');
 
         Matrix* matrix;
         int matrix_error = generate_random_matrix(size, field_size, &matrix);
@@ -84,6 +85,7 @@ int generate_test_cases(const char* filename, int min_size, int max_size, int nu
                 free(result_str);
                 successful_tests++;
                 printf("УСПЕХ\n");
+                while (getchar() != '\n');
             }
             else
             {
@@ -108,6 +110,7 @@ int generate_test_cases(const char* filename, int min_size, int max_size, int nu
     }
 
     printf("Успешно сгенерировано тестов: %d/%d\n", successful_tests, num_tests);
+    while (getchar() != '\n');
     return TEST_SUCCESS;
 }
 
@@ -124,47 +127,54 @@ int file_operations_test()
     int min_size, max_size, num_tests;
     unsigned long long min_exp, max_exp, field_size;
 
-    printf("Введите минимальный размер матрицы [1-10]: ");
-    if (scanf("%d", &min_size) != 1 || min_size < 1 || min_size > 10)
+    printf("Введите минимальный размер матрицы [1-10000]:");
+    if (scanf("%d", &min_size) != 1 || min_size < 1 || min_size > 10000)
     {
         printf("Ошибка: неверный минимальный размер\n");
         return UI_ERROR_INPUT;
     }
+    while (getchar() != '\n');
 
-    printf("Введите максимальный размер матрицы [%d-10]: ", min_size);
-    if (scanf("%d", &max_size) != 1 || max_size < min_size || max_size > 10)
+    printf("Введите максимальный размер матрицы [%d-10000]:", min_size);
+    while (getchar() != '\n');
+    if (scanf("%d", &max_size) != 1 || max_size < min_size || max_size > 10000)
     {
         printf("Ошибка: неверный максимальный размер\n");
         return UI_ERROR_INPUT;
     }
+    while (getchar() != '\n');
 
-    printf("Введите количество тестов [1-100]: ");
-    if (scanf("%d", &num_tests) != 1 || num_tests < 1 || num_tests > 100)
+    printf("Введите количество тестов [1000-10000]:");
+    if (scanf("%d", &num_tests) != 1 || num_tests < 1000 || num_tests > 10000)
     {
         printf("Ошибка: неверное количество тестов\n");
         return UI_ERROR_INPUT;
     }
+    while (getchar() != '\n');
 
-    printf("Введите минимальную степень [1-100]: ");
-    if (scanf("%llu", &min_exp) != 1 || min_exp < 1 || min_exp > 100)
+    printf("Введите минимальную степень [1-1000]:");
+    if (scanf("%llu", &min_exp) != 1 || min_exp < 1 || min_exp > 1000)
     {
         printf("Ошибка: неверная минимальная степень\n");
         return UI_ERROR_INPUT;
     }
+    while (getchar() != '\n');
 
-    printf("Введите максимальную степень [%llu-100]: ", min_exp);
-    if (scanf("%llu", &max_exp) != 1 || max_exp < min_exp || max_exp > 100)
+    printf("Введите максимальную степень [%llu-1000]:", min_exp);
+    if (scanf("%llu", &max_exp) != 1 || max_exp < min_exp || max_exp > 1000)
     {
         printf("Ошибка: неверная максимальная степень\n");
         return UI_ERROR_INPUT;
     }
+    while (getchar() != '\n');
 
-    printf("Введите размер конечного поля [2-1000]: ");
-    if (scanf("%llu", &field_size) != 1 || field_size < 2 || field_size > 1000)
+    printf("Введите размер конечного поля [0-100000]:");
+    if (scanf("%llu", &field_size) != 1 || field_size <= 0 || field_size > 100000)
     {
         printf("Ошибка: неверный размер поля\n");
         return UI_ERROR_INPUT;
     }
+    while (getchar() != '\n');
 
     printf("\nПараметры генерации:\n");
     printf("- Размер матрицы: от %dx%d до %dx%d\n", min_size, min_size, max_size, max_size);
@@ -196,21 +206,21 @@ int input_test()
     int size;
     unsigned long long exponent, field_size;
 
-    printf("Введите размер матрицы: ");
+    printf("Введите размер матрицы:");
     if (scanf("%d", &size) != 1 || size <= 0)
     {
         printf("Ошибка ввода размера матрицы\n");
         return UI_ERROR_INPUT;
     }
 
-    printf("Введите размер конечного поля: ");
+    printf("Введите размер конечного поля:");
     if (scanf("%llu", &field_size) != 1 || field_size == 0)
     {
         printf("Ошибка ввода размера поля\n");
         return UI_ERROR_INPUT;
     }
 
-    printf("Введите степень: ");
+    printf("Введите степень:");
     if (scanf("%llu", &exponent) != 1)
     {
         printf("Ошибка ввода степени\n");
@@ -218,7 +228,7 @@ int input_test()
     }
 
     getchar();
-    printf("Введите матрицу в формате (a11, a12, ...; a21, a22, ...): ");
+    printf("Введите матрицу в формате (a11,a12,...;a21,a22,...):");
     if (fgets(buffer, sizeof(buffer), stdin) == NULL)
     {
         printf("Ошибка ввода матрицы\n");
@@ -256,7 +266,7 @@ int input_test()
         }
 
         double time_taken = ((double)(end - start)) / CLOCKS_PER_SEC * 1e6;
-        printf("Время выполнения: %.2f микросекунд\n", time_taken);
+        printf("Время выполнения: %.8f микросекунд\n", time_taken);
 
         matrix_free(result);
     }

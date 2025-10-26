@@ -3,20 +3,24 @@
 
 #include "matrix.h"
 
-/* Преобразование матрицы в строковый формат:
-   формат: (a11,a12; a21,a22) — строка выделяется malloc'ом, нужно free.
-   Возвращает STRING_SUCCESS или код ошибки. */
+/*
+ * Преобразовать матрицу в строковый формат.
+ * Формат: (a11,a12;a21,a22,...)
+ * Строка выделяется через malloc, необходимо освободить через free.
+ * [IN] matrix — указатель на исходную матрицу
+ * [OUT] result — указатель на строку с результатом
+ * [RETURN] STRING_SUCCESS или код ошибки STRING_STATUS
+ */
 int matrix_to_string(const Matrix* matrix, char** result);
 
-/* Парсинг строки вида "(...)" в матрицу. field_size — модуль.
-   result — выходной Matrix*, нужно освобождать через matrix_free.
-   Возвращает STRING_SUCCESS или код ошибки. */
+/*
+ * Преобразовать строку вида "(...)" в матрицу.
+ * Строка должна содержать элементы через ',' и строки через ';'.
+ * [IN] str — входная строка с данными матрицы
+ * [IN] field_size — размер поля для модульной арифметики
+ * [OUT] result — указатель на созданную матрицу
+ * [RETURN] STRING_SUCCESS или код ошибки STRING_STATUS
+ */
 int string_to_matrix(const char* str, unsigned long long field_size, Matrix** result);
-
-/* Опциональные вспомогательные функции (CSV):
-   Сериализация матрицы в CSV-строку/файл и парсинг CSV (если нужен).
-   Определить/реализовать по необходимости. */
-int matrix_to_csv(const Matrix* matrix, const char* filename);
-int csv_to_matrix(const char* filename, Matrix** result);
 
 #endif //LAB2_STRING_UTILS_H

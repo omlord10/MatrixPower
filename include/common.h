@@ -25,8 +25,8 @@ enum MATRIX_STATUS
     MATRIX_ERROR_INVALID_SIZE,
     MATRIX_ERROR_NOT_SQUARE,
     MATRIX_ERROR_CREATION,
-    MATRIX_ERROR_MULTIPLICATION,
-    MATRIX_ERROR_POWER
+    MATRIX_ERROR_NULL_POINTER,
+    MATRIX_ERROR_INVALID_FIELD
 };
 
 /* STRING_STATUS — коды ошибок при работе со строками/парсингом */
@@ -35,7 +35,8 @@ enum STRING_STATUS
     STRING_SUCCESS = 0,
     STRING_ERROR_CONVERSION,
     STRING_ERROR_INVALID_FORMAT,
-    STRING_ERROR_BUFFER_OVERFLOW
+    STRING_ERROR_BUFFER_OVERFLOW,
+    STRING_ERROR_NULL_POINTER
 };
 
 /* TEST_STATUS — коды ошибок модуля генерации тестов */
@@ -56,8 +57,22 @@ enum UI_STATUS
     UI_ERROR_DISPLAY
 };
 
-
+/*
+ * Получить текстовое сообщение для кода ошибки матрицы.
+ * Возвращает строку с описанием ошибки (например, "Matrix dimension error").
+ * Если код ошибки неизвестен, возвращает "Unknown matrix error".
+ * [IN] error — числовой код ошибки из enum MATRIX_STATUS
+ * [RETURN] const char* — указатель на строку с сообщением
+ */
 const char* get_matrix_error_message(int error);
+
+/*
+ * Получить текстовое сообщение для кода ошибки работы со строками.
+ * Возвращает строку с описанием ошибки (например, "String conversion error").
+ * Если код ошибки неизвестен, возвращает "Unknown string error".
+ * [IN] error — числовой код ошибки из enum STRING_STATUS
+ * [RETURN] const char* — указатель на строку с сообщением
+ */
 const char* get_string_error_message(int error);
 
 #endif //LAB2_ERRORS_H

@@ -22,7 +22,7 @@ int main()
         printf("2. Тестирование с известными данными\n");
         printf("3. Генерация тестовых данных\n");
         printf("4. Выход\n");
-        printf("Выберите опцию: ");
+        printf("Выберите опцию:");
 
         if (scanf("%d", &choice) != 1)
         {
@@ -34,7 +34,7 @@ int main()
         switch (choice)
         {
             case 1:
-                ui_error = manual_test();
+                ui_error = input_test();
                 if (ui_error != UI_SUCCESS)
                 {
                     printf("Ошибка ручного тестирования: %d\n", ui_error);

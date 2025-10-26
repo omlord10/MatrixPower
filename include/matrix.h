@@ -3,50 +3,138 @@
 
 #include "common.h"
 
-/* Тип данных для матрицы */
+typedef unsigned long long ULL;
+
+/* Структура данных для матрицы */
 typedef struct Matrix
 {
-    unsigned long long** data;      /* указатель на массив строк */
+    ULL** data;      /* указатель на массив строк */
     int rows;                       /* число строк */
     int cols;                       /* число столбцов */
-    unsigned long long field_size;  /* модуль (размер конечного поля) */
+    ULL field_size;  /* модуль (размер конечного поля) */
 } Matrix;
 
-/* ---------- Прототипы функций (матрицы) ---------- */
+/* ---------- Функции (матрицы) ---------- */
 
-/* Возвращает строку-описание кода ошибки MATRIX_STATUS
-   (реализовать в matrix.c). */
-const char* get_matrix_error_message(int error);
+/*
+ * Создать матрицу rows x cols, поле field_size.
+ * result — выходной параметр (адрес указателя на Matrix).
+ * [IN] rows - количество строк матрицы
+ * [IN] cols - количество столбцов матрицы
+ * [IN] field_size - размер данных (по умолчанию, 0)
+ * [OUT] result - указатель на созданную матрицу
+ * [RETURN] MATRIX_SUCCESS или код ошибки MATRIX_STATUS
+ */
+int matrix_create(int rows, int cols, ULL field_size, Matrix** result);
 
-/* Создать матрицу rows x cols, поле field_size.
-   result — выходной параметр (адрес указателя на Matrix).
-   Возвращает MATRIX_SUCCESS или код ошибки. */
-int matrix_create(int rows, int cols, unsigned long long field_size, Matrix** result);
-
-/* Освободить память матрицы (без NULL-deref). */
+/*
+ * Освободить память, выделенную под матрицу.
+ * Уничтожает структуру и внутренние данные, предотвращая утечку памяти.
+ * Безопасно при передаче NULL (не вызывает разыменования NULL).
+ * [IN] matrix — указатель на матрицу для удаления
+ * [RETURN] MATRIX_SUCCESS или код ошибки MATRIX_STATUS
+ */
 int matrix_free(Matrix* matrix);
 
-/* Скопировать src в новый объект (через result). */
+/*
+ * Создать копию матрицы src и вернуть её через result.
+ * Полностью дублирует размеры, поле field_size и данные.
+ * [IN] src — исходная матрица
+ * [OUT] result — указатель на указатель, куда будет записана новая копия
+ * [RETURN] MATRIX_SUCCESS или код ошибки MATRIX_STATUS
+ */
 int matrix_copy(const Matrix* src, Matrix** result);
 
-/* Арифметические операции (в поле field_size) */
+/*
+ * Сложить две матрицы одинакового размера: a + b.
+ * Операция выполняется в поле field_size, если оно задано.
+ * [IN] a — первая матрица
+ * [IN] b — вторая матрица
+ * [OUT] result — указатель на новую матрицу, содержащую сумму
+ * [RETURN] MATRIX_SUCCESS или код ошибки MATRIX_STATUS
+ */
 int matrix_sum(const Matrix* a, const Matrix* b, Matrix** result);
-int matrix_subtract(const Matrix* a, const Matrix* b, Matrix** result);
-int matrix_scalar_multiply(const Matrix* a, unsigned long long scalar, Matrix** result);
 
-/* Транспонирование, вырезание подматрицы, умножение */
+/*
+ * Вычесть матрицу b из матрицы a: a - b.
+ * Операция выполняется в поле field_size, если оно задано.
+ * [IN] a — уменьшаемое
+ * [IN] b — вычитаемое
+ * [OUT] result — указатель на матрицу результата
+ * [RETURN] MATRIX_SUCCESS или код ошибки MATRIX_STATUS
+ */
+int matrix_subtract(const Matrix* a, const Matrix* b, Matrix** result);
+
+/*
+ * Умножить матрицу a на скаляр scalar в поле field_size.
+ * Каждое значение элемента матрицы умножается на scalar.
+ * [IN] a — исходная матрица
+ * [IN] scalar — множитель
+ * [OUT] result — указатель на матрицу результата
+ * [RETURN] MATRIX_SUCCESS или код ошибки MATRIX_STATUS
+ */
+int matrix_scalar_multiply(const Matrix* a, ULL scalar, Matrix** result);
+
+/*
+ * Транспонировать матрицу a (перевернуть строки и столбцы).
+ * Результирующая матрица имеет размеры cols x rows.
+ * [IN] a — исходная матрица
+ * [OUT] result — указатель на транспонированную матрицу
+ * [RETURN] MATRIX_SUCCESS или код ошибки MATRIX_STATUS
+ */
 int matrix_transpose(const Matrix* a, Matrix** result);
+
+/*
+ * Вырезать подматрицу из матрицы a по указанным индексам.
+ * Диапазоны [start_row, end_row) и [start_col, end_col) должны быть корректными.
+ * [IN] a — исходная матрица
+ * [IN] start_row — начальный индекс строки
+ * [IN] end_row — конечный индекс строки (не включая)
+ * [IN] start_col — начальный индекс столбца
+ * [IN] end_col — конечный индекс столбца (не включая)
+ * [OUT] result — указатель на вырезанную подматрицу
+ * [RETURN] MATRIX_SUCCESS или код ошибки MATRIX_STATUS
+ */
 int matrix_submatrix(const Matrix* a, int start_row, int end_row, int start_col, int end_col, Matrix** result);
+
+/*
+ * Перемножить матрицы a и b: a × b.
+ * Количество столбцов в a должно совпадать с количеством строк в b.
+ * [IN] a — первая матрица (левый множитель)
+ * [IN] b — вторая матрица (правый множитель)
+ * [OUT] result — указатель на новую матрицу с произведением
+ * [RETURN] MATRIX_SUCCESS или код ошибки MATRIX_STATUS
+ */
 int matrix_multiply(const Matrix* a, const Matrix* b, Matrix** result);
 
-/* Умножение по модулю (полезно экспортировать для тестов) */
-unsigned long long multiply_mod(unsigned long long a, unsigned long long b, unsigned long long mod);
+/*
+ * Умножить два числа по модулю (a * b) % mod.
+ * Используется в арифметике поля field_size, предотвращая переполнение.
+ * [IN] a — первый множитель
+ * [IN] b — второй множитель
+ * [IN] mod — модуль (если 0, операция выполняется без модуля)
+ * [RETURN] результат умножения по модулю
+ */
+ULL multiply_mod(ULL a, ULL b, ULL mod);
 
-/* Быстрое возведение квадратной матрицы в степень (бинарное возведение).
-   base должен быть квадратной матрицей. */
-int matrix_power(const Matrix* base, unsigned long long exponent, Matrix** result);
+/*
+ * Возвести квадратную матрицу base в степень exponent.
+ * Используется метод бинарного возведения для эффективности.
+ * Операции выполняются в поле field_size.
+ * [IN] base — квадратная матрица (n x n)
+ * [IN] exponent — показатель степени
+ * [OUT] result — указатель на результирующую матрицу
+ * [RETURN] MATRIX_SUCCESS или код ошибки MATRIX_STATUS
+ */
+int matrix_power(const Matrix* base, ULL exponent, Matrix** result);
 
-/* Печать матрицы (удобно для отладки). */
+/*
+ * Напечатать матрицу в стандартный поток вывода.
+ * Формат вывода зависит от field_size (по модулю или обычные значения).
+ * Используется для отладки и проверки корректности.
+ * [IN] matrix — указатель на матрицу для печати
+ * [RETURN] MATRIX_SUCCESS или код ошибки MATRIX_STATUS
+ */
 int matrix_print(const Matrix* matrix);
 
 #endif //LAB2_MATRIX_H

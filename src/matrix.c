@@ -1,9 +1,9 @@
 #include "../include/matrix.h"
 #include "../include/common.h"
 
-int matrix_create(int rows, int cols, unsigned long long field_size, Matrix** result)
+int matrix_create(int rows, int cols, ULL field_size, Matrix** result)
 {
-    if (rows <= 0 || cols <= 0)
+    if (rows < 1 || cols < 1)
     {
         return MATRIX_ERROR_INVALID_SIZE;
     }
@@ -18,7 +18,7 @@ int matrix_create(int rows, int cols, unsigned long long field_size, Matrix** re
     matrix->cols = cols;
     matrix->field_size = field_size;
 
-    matrix->data = (unsigned long long**)malloc(rows * sizeof(unsigned long long*));
+    matrix->data = (ULL**)malloc(rows * sizeof(ULL*));
     if (!matrix->data)
     {
         free(matrix);
@@ -27,7 +27,7 @@ int matrix_create(int rows, int cols, unsigned long long field_size, Matrix** re
 
     for (int i = 0; i < rows; i++)
     {
-        matrix->data[i] = (unsigned long long*)calloc(cols, sizeof(unsigned long long));
+        matrix->data[i] = (ULL*)calloc(cols, sizeof(ULL));
         if (!matrix->data[i])
         {
             for (int j = 0; j < i; j++)
@@ -68,9 +68,9 @@ int matrix_free(Matrix* matrix)
 
 int matrix_copy(const Matrix* src, Matrix** result)
 {
-    if (!src)
+    if (!src || !result)
     {
-        return MATRIX_ERROR_INVALID_SIZE;
+        return MATRIX_ERROR_NULL_POINTER;
     }
 
     int error;
@@ -90,11 +90,11 @@ int matrix_copy(const Matrix* src, Matrix** result)
     return MATRIX_SUCCESS;
 }
 
-unsigned long long multiply_mod(unsigned long long a, unsigned long long b, unsigned long long mod)
+ULL multiply_mod(ULL a, ULL b, ULL mod)
 {
     if (mod == 0) return a * b;
 
-    unsigned long long result = 0;
+    ULL result = 0;
     a %= mod;
     b %= mod;
 
@@ -113,13 +113,21 @@ unsigned long long multiply_mod(unsigned long long a, unsigned long long b, unsi
 
 int matrix_sum(const Matrix* a, const Matrix* b, Matrix** result)
 {
-    if (!a || !b)
+    if (!a || !b || !result)
+    {
+        return MATRIX_ERROR_NULL_POINTER;
+    }
+    if (a->rows < 1 || a->cols < 1 || b->rows < 1 || b->cols < 1)
     {
         return MATRIX_ERROR_INVALID_SIZE;
     }
-    if (a->rows != b->rows || a->cols != b->cols || a->field_size != b->field_size)
+    if (a->rows != b->rows || a->cols != b->cols)
     {
         return MATRIX_ERROR_DIMENSION;
+    }
+    if (a->field_size != b->field_size)
+    {
+        return MATRIX_ERROR_INVALID_FIELD;
     }
 
     int error;
@@ -127,11 +135,24 @@ int matrix_sum(const Matrix* a, const Matrix* b, Matrix** result)
     error = matrix_create(a->rows, a->cols, a->field_size, &sum_matrix);
     if (error != MATRIX_SUCCESS) return error;
 
-    for (int i = 0; i < a->rows; i++)
+    if (a->field_size == 0)
     {
-        for (int j = 0; j < a->cols; j++)
+        for (int i = 0; i < a->rows; i++)
         {
-            sum_matrix->data[i][j] = (a->data[i][j] + b->data[i][j]) % a->field_size;
+            for (int j = 0; j < a->cols; j++)
+            {
+                sum_matrix->data[i][j] = a->data[i][j] + b->data[i][j];
+            }
+        }
+    }
+    else
+    {
+        for (int i = 0; i < a->rows; i++)
+        {
+            for (int j = 0; j < a->cols; j++)
+            {
+                sum_matrix->data[i][j] = (a->data[i][j] + b->data[i][j]) % a->field_size;
+            }
         }
     }
 
@@ -141,13 +162,21 @@ int matrix_sum(const Matrix* a, const Matrix* b, Matrix** result)
 
 int matrix_subtract(const Matrix* a, const Matrix* b, Matrix** result)
 {
-    if (!a || !b)
+    if (!a || !b || !result)
+    {
+        return MATRIX_ERROR_NULL_POINTER;
+    }
+    if (a->rows < 1 || a->cols < 1 || b->rows < 1 || b->cols < 1)
     {
         return MATRIX_ERROR_INVALID_SIZE;
     }
-    if (a->rows != b->rows || a->cols != b->cols || a->field_size != b->field_size)
+    if (a->rows != b->rows || a->cols != b->cols)
     {
         return MATRIX_ERROR_DIMENSION;
+    }
+    if (a->field_size != b->field_size)
+    {
+        return MATRIX_ERROR_INVALID_FIELD;
     }
 
     int error;
@@ -155,11 +184,25 @@ int matrix_subtract(const Matrix* a, const Matrix* b, Matrix** result)
     error = matrix_create(a->rows, a->cols, a->field_size, &sub_matrix);
     if (error != MATRIX_SUCCESS) return error;
 
-    for (int i = 0; i < a->rows; i++)
+    if (a->field_size == 0)
     {
-        for (int j = 0; j < a->cols; j++)
+        for (int i = 0; i < a->rows; i++)
         {
-            sub_matrix->data[i][j] = (a->data[i][j] - b->data[i][j] + a->field_size) % a->field_size;
+            for (int j = 0; j < a->cols; j++)
+            {
+                sub_matrix->data[i][j] = a->data[i][j] - b->data[i][j];
+            }
+        }
+    }
+    else
+    {
+        for (int i = 0; i < a->rows; i++)
+        {
+            for (int j = 0; j < a->cols; j++)
+            {
+                sub_matrix->data[i][j] =
+                    (a->data[i][j] - b->data[i][j] + a->field_size) % a->field_size;
+            }
         }
     }
 
@@ -167,9 +210,13 @@ int matrix_subtract(const Matrix* a, const Matrix* b, Matrix** result)
     return MATRIX_SUCCESS;
 }
 
-int matrix_scalar_multiply(const Matrix* a, unsigned long long scalar, Matrix** result)
+int matrix_scalar_multiply(const Matrix* a, ULL scalar, Matrix** result)
 {
-    if (!a)
+    if (!a || !result)
+    {
+        return MATRIX_ERROR_NULL_POINTER;
+    }
+    if (a->rows < 1 || a->cols < 1)
     {
         return MATRIX_ERROR_INVALID_SIZE;
     }
@@ -179,11 +226,24 @@ int matrix_scalar_multiply(const Matrix* a, unsigned long long scalar, Matrix** 
     error = matrix_create(a->rows, a->cols, a->field_size, &scaled_matrix);
     if (error != MATRIX_SUCCESS) return error;
 
-    for (int i = 0; i < a->rows; i++)
+    if (a->field_size == 0)
     {
-        for (int j = 0; j < a->cols; j++)
+        for (int i = 0; i < a->rows; i++)
         {
-            scaled_matrix->data[i][j] = multiply_mod(a->data[i][j], scalar, a->field_size);
+            for (int j = 0; j < a->cols; j++)
+            {
+                scaled_matrix->data[i][j] = a->data[i][j] * scalar;
+            }
+        }
+    }
+    else
+    {
+        for (int i = 0; i < a->rows; i++)
+        {
+            for (int j = 0; j < a->cols; j++)
+            {
+                scaled_matrix->data[i][j] = multiply_mod(a->data[i][j], scalar, a->field_size);
+            }
         }
     }
 
@@ -193,7 +253,11 @@ int matrix_scalar_multiply(const Matrix* a, unsigned long long scalar, Matrix** 
 
 int matrix_transpose(const Matrix* a, Matrix** result)
 {
-    if (!a)
+    if (!a || !result)
+    {
+        return MATRIX_ERROR_NULL_POINTER;
+    }
+    if (a->rows < 1 || a->cols < 1)
     {
         return MATRIX_ERROR_INVALID_SIZE;
     }
@@ -217,13 +281,21 @@ int matrix_transpose(const Matrix* a, Matrix** result)
 
 int matrix_multiply(const Matrix* a, const Matrix* b, Matrix** result)
 {
-    if (!a || !b)
+    if (!a || !b || !result)
+    {
+        return MATRIX_ERROR_NULL_POINTER;
+    }
+    if (a->rows < 1 || a->cols < 1 || b->rows < 1 || b->cols < 1)
     {
         return MATRIX_ERROR_INVALID_SIZE;
     }
-    if (a->cols != b->rows || a->field_size != b->field_size)
+    if (a->cols != b->rows)
     {
         return MATRIX_ERROR_DIMENSION;
+    }
+    if (a->field_size != b->field_size)
+    {
+        return MATRIX_ERROR_INVALID_FIELD;
     }
 
     int error;
@@ -231,16 +303,35 @@ int matrix_multiply(const Matrix* a, const Matrix* b, Matrix** result)
     error = matrix_create(a->rows, b->cols, a->field_size, &product);
     if (error != MATRIX_SUCCESS) return error;
 
-    for (int i = 0; i < a->rows; i++)
+    int i, j, k;
+    if (a->field_size == 0)
     {
-        for (int j = 0; j < b->cols; j++)
+        for (i = 0; i < a->rows; i++)
         {
-            unsigned long long sum = 0;
-            for (int k = 0; k < a->cols; k++)
+            for (j = 0; j < b->cols; j++)
             {
-                sum = (sum + multiply_mod(a->data[i][k], b->data[k][j], a->field_size)) % a->field_size;
+                ULL sum = 0;
+                for (k = 0; k < a->cols; k++)
+                {
+                    sum += a->data[i][k] * b->data[k][j];
+                }
+                product->data[i][j] = sum;
             }
-            product->data[i][j] = sum;
+        }
+    }
+    else
+    {
+        for (i = 0; i < a->rows; i++)
+        {
+            for (j = 0; j < b->cols; j++)
+            {
+                ULL sum = 0;
+                for (k = 0; k < a->cols; k++)
+                {
+                    sum = (sum + multiply_mod(a->data[i][k], b->data[k][j], a->field_size)) % a->field_size;
+                }
+                product->data[i][j] = sum;
+            }
         }
     }
 
@@ -248,12 +339,13 @@ int matrix_multiply(const Matrix* a, const Matrix* b, Matrix** result)
     return MATRIX_SUCCESS;
 }
 
+
 int matrix_submatrix(const Matrix* a, int start_row, int end_row,
-                                int start_col, int end_col, Matrix** result)
+                     int start_col, int end_col, Matrix** result)
 {
-    if (!a)
+    if (!a || !result)
     {
-        return MATRIX_ERROR_INVALID_SIZE;
+        return MATRIX_ERROR_NULL_POINTER;
     }
     if (start_row < 0 || end_row >= a->rows || start_col < 0 || end_col >= a->cols ||
         start_row > end_row || start_col > end_col)
@@ -269,9 +361,10 @@ int matrix_submatrix(const Matrix* a, int start_row, int end_row,
     error = matrix_create(sub_rows, sub_cols, a->field_size, &submatrix);
     if (error != MATRIX_SUCCESS) return error;
 
-    for (int i = 0; i < sub_rows; i++)
+    int i, j;
+    for (i = 0; i < sub_rows; i++)
     {
-        for (int j = 0; j < sub_cols; j++)
+        for (j = 0; j < sub_cols; j++)
         {
             submatrix->data[i][j] = a->data[start_row + i][start_col + j];
         }
@@ -281,29 +374,32 @@ int matrix_submatrix(const Matrix* a, int start_row, int end_row,
     return MATRIX_SUCCESS;
 }
 
-int matrix_power(const Matrix* base, unsigned long long exponent, Matrix** result)
+int matrix_power(const Matrix* base, ULL exponent, Matrix** result)
 {
-    if (!base)
+    if (!base || !result)
     {
-        return MATRIX_ERROR_INVALID_SIZE;
+        return MATRIX_ERROR_NULL_POINTER;
     }
     if (base->rows != base->cols)
     {
         return MATRIX_ERROR_NOT_SQUARE;
     }
 
+    int error;
+    Matrix* result_matrix;
+    Matrix* temp_power;
+
     if (exponent == 0)
     {
-        int error;
-        Matrix* identity;
-        error = matrix_create(base->rows, base->cols, base->field_size, &identity);
+        error = matrix_create(base->rows, base->cols, base->field_size, &result_matrix);
         if (error != MATRIX_SUCCESS) return error;
 
         for (int i = 0; i < base->rows; i++)
         {
-            identity->data[i][i] = 1;
+            result_matrix->data[i][i] = 1;
         }
-        *result = identity;
+
+        *result = result_matrix;
         return MATRIX_SUCCESS;
     }
 
@@ -312,17 +408,13 @@ int matrix_power(const Matrix* base, unsigned long long exponent, Matrix** resul
         return matrix_copy(base, result);
     }
 
-    int error;
-    Matrix* result_matrix;
     error = matrix_create(base->rows, base->cols, base->field_size, &result_matrix);
     if (error != MATRIX_SUCCESS) return error;
-
     for (int i = 0; i < base->rows; i++)
     {
         result_matrix->data[i][i] = 1;
     }
 
-    Matrix* temp_power;
     error = matrix_copy(base, &temp_power);
     if (error != MATRIX_SUCCESS)
     {
@@ -330,7 +422,7 @@ int matrix_power(const Matrix* base, unsigned long long exponent, Matrix** resul
         return error;
     }
 
-    unsigned long long exp = exponent;
+    ULL exp = exponent;
 
     while (exp > 0)
     {
@@ -340,8 +432,8 @@ int matrix_power(const Matrix* base, unsigned long long exponent, Matrix** resul
             error = matrix_multiply(result_matrix, temp_power, &temp_result);
             if (error != MATRIX_SUCCESS)
             {
-                matrix_free(temp_power);
                 matrix_free(result_matrix);
+                matrix_free(temp_power);
                 return error;
             }
             matrix_free(result_matrix);
@@ -355,8 +447,8 @@ int matrix_power(const Matrix* base, unsigned long long exponent, Matrix** resul
             error = matrix_multiply(temp_power, temp_power, &temp_square);
             if (error != MATRIX_SUCCESS)
             {
-                matrix_free(temp_power);
                 matrix_free(result_matrix);
+                matrix_free(temp_power);
                 return error;
             }
             matrix_free(temp_power);
@@ -368,6 +460,7 @@ int matrix_power(const Matrix* base, unsigned long long exponent, Matrix** resul
     *result = result_matrix;
     return MATRIX_SUCCESS;
 }
+
 
 int matrix_print(const Matrix* matrix)
 {
@@ -389,5 +482,3 @@ int matrix_print(const Matrix* matrix)
     }
     return UI_SUCCESS;
 }
-
-// Остальные функции matrix_* ...

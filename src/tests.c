@@ -1,15 +1,50 @@
+#define _POSIX_C_SOURCE 199309L
 #include "../include/tests.h"
 
-int generate_random_matrix(int size, unsigned long long field_size, Matrix** result)
+static inline uint64_t rand64(void)
 {
-    int error = matrix_create(size, size, field_size, result);
-    if (error != MATRIX_SUCCESS) return error;
+    // Собираем 64 бита из нескольких rand() вызовов.
+    // rand() обычно даёт >=15 бит; комбинация даёт достаточно случайности для тестов.
+    return ((uint64_t)rand() << 48) ^ ((uint64_t)rand() << 32) ^
+           ((uint64_t)rand() << 16) ^ (uint64_t)rand();
+}
+
+/* Вспомогательная: получить текущее время в наносекундах (monotonic).
+   Возвращает 0 при успехе, -1 при ошибке. Результат в out_ns. */
+static int get_time_ns(int64_t* out_ns)
+{
+    if (out_ns == NULL)
+    {
+        return TEST_ERROR_INVALID_PARAMS;
+    }
+    struct timespec ts;
+    if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0)
+    {
+        return -1;
+    }
+    *out_ns = (int64_t)ts.tv_sec * 1000000000LL + (int64_t)ts.tv_nsec;
+    return 0;
+}
+
+int generate_random_matrix(int size, ULL field_size, Matrix** result)
+{
+    if (result == NULL)
+        return MATRIX_ERROR_NULL_POINTER;
+    if (size <= 0)
+        return MATRIX_ERROR_INVALID_SIZE;
+
+    int err = matrix_create(size, size, field_size, result);
+    if (err != MATRIX_SUCCESS) return err;
 
     for (int i = 0; i < size; i++)
     {
         for (int j = 0; j < size; j++)
         {
-            (*result)->data[i][j] = rand() % field_size;
+            uint64_t r = rand64();
+            if (field_size == 0)
+                (*result)->data[i][j] = r;
+            else
+                (*result)->data[i][j] = r % field_size;
         }
     }
 
@@ -17,183 +52,165 @@ int generate_random_matrix(int size, unsigned long long field_size, Matrix** res
 }
 
 int generate_test_cases(const char* filename, int min_size, int max_size, int num_tests,
-                       unsigned long long min_exponent, unsigned long long max_exponent,
-                       unsigned long long field_size)
+                       ULL min_exponent, ULL max_exponent,
+                       ULL field_size)
 {
-    FILE* file = fopen(filename, "w");
-    if (!file)
-    {
-        return TEST_ERROR_FILE_WRITE;
-    }
+    if (!filename) return TEST_ERROR_FILE_WRITE;
+    if (min_size <= 0 || max_size <= 0 || min_size > max_size) return TEST_ERROR_INVALID_PARAMS;
+    if (num_tests <= 0) return TEST_ERROR_INVALID_PARAMS;
+    if (min_exponent > max_exponent) return TEST_ERROR_INVALID_PARAMS;
 
-    if (min_size <= 0 || max_size <= 0 || min_size > max_size || num_tests <= 0 ||
-        min_exponent > max_exponent || field_size == 0)
-    {
-        fclose(file);
-        return TEST_ERROR_INVALID_PARAMS;
-    }
+    FILE* csv = fopen(filename, "w");
+    if (!csv) return TEST_ERROR_FILE_WRITE;
 
-    fprintf(file, "matrix_size,exponent,field_size,matrix_data,result_data,computation_time_ns\n");
+    FILE* short_out = fopen("output-short.txt", "w");
+    if (!short_out) { fclose(csv); return TEST_ERROR_FILE_WRITE; }
 
-    srand((unsigned int)time(NULL));
+    fprintf(csv, "matrix_size,exponent,field_size,matrix_data,result_data,computation_time_ns\n");
+    fprintf(short_out, "matrix_size exponent field_size computation_time_ns\n");
+
+    srand((unsigned)time(NULL));
 
     int successful_tests = 0;
-
-    for (int test = 0; test < num_tests; test++)
+    for (int test_idx = 0; test_idx < num_tests; ++test_idx)
     {
         int size = min_size + (rand() % (max_size - min_size + 1));
-        unsigned long long exponent = min_exponent + (rand() % (max_exponent - min_exponent + 1));
+        ULL exponent = min_exponent;
+        if (min_exponent != max_exponent)
+            exponent = min_exponent + (rand() % (unsigned int)(max_exponent - min_exponent + 1));
 
-        printf("Генерация теста %d/%d: матрица %dx%d, степень %llu... ",
-               test + 1, num_tests, size, size, exponent);
-        while (getchar() != '\n');
-
-        Matrix* matrix;
-        int matrix_error = generate_random_matrix(size, field_size, &matrix);
-        if (matrix_error != MATRIX_SUCCESS)
+        Matrix* M = NULL;
+        int create_err = generate_random_matrix(size, field_size, &M);
+        if (create_err != MATRIX_SUCCESS)
         {
-            printf("ОШИБКА: не удалось создать матрицу\n");
-            fclose(file);
-            return TEST_ERROR_GENERATION;
+            fprintf(stderr, "Failed to create matrix: %s\n", get_matrix_error_message(create_err));
+            continue;
         }
 
-        char* matrix_str;
-        int string_error = matrix_to_string(matrix, &matrix_str);
-        if (string_error != STRING_SUCCESS)
+        char* matrix_str = NULL;
+        if (matrix_to_string(M, &matrix_str) != STRING_SUCCESS)
+            matrix_str = strdup("SERIALIZE_ERROR");
+
+        int64_t t0 = 0, t1 = 0;
+        if (get_time_ns(&t0) != 0) t0 = 0;
+        Matrix* R = NULL;
+        int pow_err = matrix_power(M, exponent, &R);
+        if (get_time_ns(&t1) != 0) t1 = t0;
+        int64_t dt_ns = t1 - t0;
+
+        char* result_str = NULL;
+        if (pow_err == MATRIX_SUCCESS)
         {
-            printf("ОШИБКА: не удалось преобразовать матрицу в строку\n");
-            matrix_free(matrix);
-            fclose(file);
-            return TEST_ERROR_GENERATION;
-        }
-
-        clock_t start = clock();
-        Matrix* result;
-        matrix_error = matrix_power(matrix, exponent, &result);
-        clock_t end = clock();
-
-        double computation_time = ((double)(end - start)) / CLOCKS_PER_SEC * 1e9;
-
-        if (matrix_error == MATRIX_SUCCESS)
-        {
-            char* result_str;
-            string_error = matrix_to_string(result, &result_str);
-            if (string_error == STRING_SUCCESS)
-            {
-                fprintf(file, "%d,%llu,%llu,\"%s\",\"%s\",%.0f\n",
-                       size, exponent, field_size, matrix_str, result_str, computation_time);
-                free(result_str);
-                successful_tests++;
-                printf("УСПЕХ\n");
-                while (getchar() != '\n');
-            }
-            else
-            {
-                printf("ОШИБКА: не удалось преобразовать результат в строку\n");
-            }
-            matrix_free(result);
+            if (matrix_to_string(R, &result_str) != STRING_SUCCESS)
+                result_str = strdup("SERIALIZE_ERROR");
         }
         else
         {
-            printf("ОШИБКА: %s\n", get_matrix_error_message(matrix_error));
+            const char* msg = get_matrix_error_message(pow_err);
+            result_str = strdup(msg ? msg : "POWER_ERROR");
         }
 
+        // вывод в терминал для каждого теста
+        printf("%d %llu %llu %lld\n", size, exponent, field_size, (long long)dt_ns);
+
+        // запись в short_out
+        fprintf(short_out, "%d %llu %llu %lld\n", size, exponent, field_size, (long long)dt_ns);
+
+        // запись в CSV
+        fprintf(csv, "%d,%llu,%llu,\"%s\",\"%s\",%lld\n",
+                size, exponent, field_size,
+                matrix_str ? matrix_str : "NULL",
+                result_str ? result_str : "NULL",
+                (long long)dt_ns);
+
         free(matrix_str);
-        matrix_free(matrix);
+        free(result_str);
+        if (R) matrix_free(R);
+        matrix_free(M);
+
+        successful_tests++;
     }
 
-    fclose(file);
+    fclose(csv);
+    fclose(short_out);
 
     if (successful_tests == 0)
-    {
         return TEST_ERROR_GENERATION;
-    }
 
-    printf("Успешно сгенерировано тестов: %d/%d\n", successful_tests, num_tests);
-    while (getchar() != '\n');
+    printf("Generated and ran %d tests (output: %s and output-short.txt)\n", successful_tests, filename);
     return TEST_SUCCESS;
 }
 
 int file_operations_test()
 {
-    printf("=== ГЕНЕРАЦИЯ ТЕСТОВЫХ ДАННЫХ ===\n\n");
+    printf("=== ВЫБОР РЕЖИМА ГЕНЕРАЦИИ ТЕСТОВ ===\n");
+    printf("1) Фиксация по степени (случайный размер матрицы)\n");
+    printf("2) Фиксация по размеру матрицы (случайная степень)\n");
+    printf("Выберите режим [1-2]:");
 
-    printf("СПРАВКА:\n");
-    printf("- Размер матрицы: квадратная матрица NxN\n");
-    printf("- Степень: показатель для возведения матрицы в степень\n");
-    printf("- Размер поля: модуль для арифметических операций\n");
-    printf("- Файл результатов: CSV с временем выполнения в наносекундах\n\n");
-
-    int min_size, max_size, num_tests;
-    unsigned long long min_exp, max_exp, field_size;
-
-    printf("Введите минимальный размер матрицы [1-10000]:");
-    if (scanf("%d", &min_size) != 1 || min_size < 1 || min_size > 10000)
-    {
-        printf("Ошибка: неверный минимальный размер\n");
+    int mode = 0;
+    if (scanf("%d", &mode) != 1 || (mode != 1 && mode != 2))
         return UI_ERROR_INPUT;
-    }
     while (getchar() != '\n');
 
-    printf("Введите максимальный размер матрицы [%d-10000]:", min_size);
-    while (getchar() != '\n');
-    if (scanf("%d", &max_size) != 1 || max_size < min_size || max_size > 10000)
-    {
-        printf("Ошибка: неверный максимальный размер\n");
+    int min_size = 0, max_size = 0;
+    ULL min_exp = 0, max_exp = 0, fixed_value = 0, field_size = 0;
+    int num_tests = 0;
+
+    printf("Введите количество тестов [1-10000]:");
+    if (scanf("%d", &num_tests) != 1 || num_tests < 1 || num_tests > 10000)
         return UI_ERROR_INPUT;
-    }
     while (getchar() != '\n');
 
-    printf("Введите количество тестов [1000-10000]:");
-    if (scanf("%d", &num_tests) != 1 || num_tests < 1000 || num_tests > 10000)
+    if (mode == 1) // фиксированная степень
     {
-        printf("Ошибка: неверное количество тестов\n");
-        return UI_ERROR_INPUT;
-    }
-    while (getchar() != '\n');
+        printf("Введите фиксированную степень:");
+        if (scanf("%llu", &fixed_value) != 1 || fixed_value < 1 || fixed_value > 1000)
+            return UI_ERROR_INPUT;
+        while (getchar() != '\n');
+        min_exp = max_exp = fixed_value;
 
-    printf("Введите минимальную степень [1-1000]:");
-    if (scanf("%llu", &min_exp) != 1 || min_exp < 1 || min_exp > 1000)
+        printf("Введите минимальный размер матрицы [1-10000]:");
+        if (scanf("%d", &min_size) != 1 || min_size < 1 || min_size > 10000)
+            return UI_ERROR_INPUT;
+
+        printf("Введите максимальный размер матрицы [%d-10000]:", min_size);
+        if (scanf("%d", &max_size) != 1 || max_size < min_size || max_size > 10000)
+            return UI_ERROR_INPUT;
+    }
+    else // фиксированный размер матрицы
     {
-        printf("Ошибка: неверная минимальная степень\n");
-        return UI_ERROR_INPUT;
+        printf("Введите фиксированный размер матрицы [1-10000]:");
+        if (scanf("%d", &fixed_value) != 1 || fixed_value < 1 || fixed_value > 10000)
+            return UI_ERROR_INPUT;
+        min_size = max_size = (int)fixed_value;
+
+        printf("Введите минимальную степень [1-1000]:");
+        if (scanf("%llu", &min_exp) != 1 || min_exp < 1 || min_exp > 1000)
+            return UI_ERROR_INPUT;
+        while (getchar() != '\n');
+
+        printf("Введите максимальную степень [%llu-1000]:", min_exp);
+        if (scanf("%llu", &max_exp) != 1 || max_exp < min_exp || max_exp > 1000)
+            return UI_ERROR_INPUT;
+        while (getchar() != '\n');
     }
+
+    printf("Введите размер поля [0-100000] (0 = без модулей):");
+    if (scanf("%llu", &field_size) != 1 || field_size > 100000)
+        return UI_ERROR_INPUT;
     while (getchar() != '\n');
 
-    printf("Введите максимальную степень [%llu-1000]:", min_exp);
-    if (scanf("%llu", &max_exp) != 1 || max_exp < min_exp || max_exp > 1000)
-    {
-        printf("Ошибка: неверная максимальная степень\n");
-        return UI_ERROR_INPUT;
-    }
-    while (getchar() != '\n');
+    printf("\nНачало генерации тестов...\n");
 
-    printf("Введите размер конечного поля [0-100000]:");
-    if (scanf("%llu", &field_size) != 1 || field_size <= 0 || field_size > 100000)
-    {
-        printf("Ошибка: неверный размер поля\n");
-        return UI_ERROR_INPUT;
-    }
-    while (getchar() != '\n');
-
-    printf("\nПараметры генерации:\n");
-    printf("- Размер матрицы: от %dx%d до %dx%d\n", min_size, min_size, max_size, max_size);
-    printf("- Степень: от %llu до %llu\n", min_exp, max_exp);
-    printf("- Количество тестов: %d\n", num_tests);
-    printf("- Размер поля: %llu\n\n", field_size);
-
-    printf("Начало генерации...\n");
-    int test_error = generate_test_cases("matrix_power_tests.csv", min_size, max_size, num_tests,
-                                       min_exp, max_exp, field_size);
+    int test_error = generate_test_cases("matrix_power_tests.csv",
+                                         min_size, max_size, num_tests,
+                                         min_exp, max_exp, field_size);
 
     if (test_error == TEST_SUCCESS)
-    {
         printf("\nТестовые данные успешно сохранены в matrix_power_tests.csv\n");
-    }
     else
-    {
         printf("\nОшибка при генерации тестов: %d\n", test_error);
-    }
 
     return UI_SUCCESS;
 }
@@ -204,7 +221,7 @@ int input_test()
 
     char buffer[256];
     int size;
-    unsigned long long exponent, field_size;
+    ULL exponent, field_size;
 
     printf("Введите размер матрицы:");
     if (scanf("%d", &size) != 1 || size <= 0)

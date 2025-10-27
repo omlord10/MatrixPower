@@ -1,10 +1,13 @@
 #ifndef LAB2_ERRORS_H
 #define LAB2_ERRORS_H
 
+
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
 /* ---------- Коды ошибок (общие / для UI) ---------- */
 /* MAIN_STATUS — общий код возврата для main/утилит */

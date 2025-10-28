@@ -11,7 +11,7 @@
  * [OUT] result — указатель на созданную матрицу
  * [RETURN] MATRIX_SUCCESS или код ошибки MATRIX_STATUS
  */
-int generate_random_matrix(int size, unsigned long long field_size, Matrix** result);
+int generate_random_matrix(int size, ULL field_size, Matrix** result);
 
 /*
  * Сгенерировать набор тестов и сохранить в CSV-файл.

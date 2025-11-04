@@ -1,7 +1,7 @@
 #include "../include/tests.h"
 
 #define POSIX_C_SOURCE 199309L
-#define K 4 // [2^K;(2^K)-1)
+#define K 19 // [2^K;(2^K)-1)
 
 static inline uint64_t rand64(void)
 {
@@ -54,43 +54,23 @@ int generate_random_matrix(int size, ULL field_size, Matrix** result)
     ULL min_number = 1ULL << K;
     ULL max_number = 1ULL << (K + 1);
 
-    if (field_size > 0 && max_number >= field_size)
-        return MATRIX_ERROR_INVALID_NUMBER;
-
     ULL range = max_number - min_number + 1;
-
-    if (field_size > 0 && range > field_size)
-    {
-        return MATRIX_ERROR_INVALID_NUMBER;
-    }
 
     for (int i = 0; i < size; i++)
     {
         for (int j = 0; j < size; j++)
         {
             ULL random_value;
-
+            ULL r = rand64();
             if (field_size == 0)
             {
-                if (range == 1)
-                {
-                    random_value = min_number;
-                }
-                else
-                {
-                    ULL r64 = rand64();
-                    random_value = min_number + (r64 % range);
-                }
+
+                random_value = min_number + (r % range);
             }
             else
             {
-                uint32_t r = rand32();
                 random_value = min_number + (r % range);
-
-                if (field_size > 0)
-                {
-                    random_value %= field_size;
-                }
+                random_value %= field_size;
             }
 
             (*result)->data[i][j] = random_value;
@@ -114,7 +94,7 @@ int generate_test_cases(const char* filename, int min_size, int max_size, int nu
     FILE* short_out = fopen("output-short.txt", "w");
     if (!short_out) { fclose(csv); return TEST_ERROR_FILE_WRITE; }
 
-    fprintf(csv, "matrix_size,exponent,field_size,matrix_data,result_data,computation_time_ns\n");
+    fprintf(csv, "matrix_size,exponent,field_size,computation_time_ns\n");
     fprintf(short_out, "matrix_size exponent field_size computation_time_ns\n");
 
     srand((unsigned)time(NULL));
@@ -147,7 +127,7 @@ int generate_test_cases(const char* filename, int min_size, int max_size, int nu
         Matrix* R = NULL;
         int pow_err = matrix_power(M, exponent, &R);
         if (get_time_ns(&t1) != 0) t1 = t0;
-        int64_t dt_ns = t1 - t0;
+        ULL dt_ns = t1 - t0;
 
         char* result_str = NULL;
         if (pow_err == MATRIX_SUCCESS)
@@ -161,15 +141,13 @@ int generate_test_cases(const char* filename, int min_size, int max_size, int nu
             result_str = strdup(msg ? msg : "POWER_ERROR");
         }
 
-        printf("%6d %6d %12llu %12llu %12lld\n", count_tests, size, exponent, field_size, (long long)dt_ns);
+        printf("%6d %6d %12llu %12llu %12lld\n", count_tests, size, exponent, field_size, dt_ns);
 
-        fprintf(short_out, "%d %llu %llu %lld\n", size, exponent, field_size, (long long)dt_ns);
+        fprintf(short_out, "%d %llu %llu %llu\n", size, exponent, field_size, dt_ns);
 
-        fprintf(csv, "%d,%llu,%llu,\"%s\",\"%s\",%lld\n",
+        fprintf(csv, "%d,%llu,%llu,%lld\n",
                 size, exponent, field_size,
-                matrix_str ? matrix_str : "NULL",
-                result_str ? result_str : "NULL",
-                (long long)dt_ns);
+                dt_ns);
 
         free(matrix_str);
         free(result_str);
@@ -202,7 +180,7 @@ int file_operations_test()
     while (getchar() != '\n');
 
     int min_size = 0, max_size = 0;
-    ULL min_exp = 0, max_exp = 0, fixed_value = 0, field_size = 0;
+    ULL min_exp = 0, max_exp = 0, static_size = 0, field_size = 0;
     int num_tests = 0;
 
     printf("\nВведите количество тестов [1-10000]:");
@@ -212,43 +190,45 @@ int file_operations_test()
 
     if (mode == 1) // фиксированная степень
     {
-        printf("\nВведите фиксированную степень:");
-        if (scanf("%llu", &fixed_value) != 1 || fixed_value < 1 || fixed_value > 1000)
+        printf("\nВведите фиксированную степень [1-1000000]:");
+        if (scanf("%llu", &static_size) != 1 || static_size < 1 || static_size > 1000000)
             return UI_ERROR_INPUT;
         while (getchar() != '\n');
-        min_exp = max_exp = fixed_value;
+        min_exp = max_exp = static_size;
 
-        printf("\nВведите минимальный размер матрицы [1-10000]:");
-        if (scanf("%d", &min_size) != 1 || min_size < 1 || min_size > 10000)
+        printf("\nВведите минимальный размер матрицы [1-1000000]:");
+        if (scanf("%d", &min_size) != 1 || min_size < 1 || min_size > 1000000)
             return UI_ERROR_INPUT;
         while (getchar() != '\n');
 
-        printf("\nВведите максимальный размер матрицы [%d-10000]:", min_size);
-        if (scanf("%d", &max_size) != 1 || max_size < min_size || max_size > 10000)
+        printf("\nВведите максимальный размер матрицы [%d-1000000]:", min_size);
+        if (scanf("%d", &max_size) != 1 || max_size < min_size || max_size > 1000000)
             return UI_ERROR_INPUT;
         while (getchar() != '\n');
     }
     else // фиксированный размер матрицы
     {
-        printf("\nВведите фиксированный размер матрицы [1-10000]:");
-        if (scanf("%llu", &fixed_value) != 1 || fixed_value < 1 || fixed_value > 10000)
+        printf("\nВведите фиксированный размер матрицы [1-1000000]:");
+        if (scanf("%llu", &static_size) != 1 || static_size < 1 || static_size > 1000000)
             return UI_ERROR_INPUT;
         while (getchar() != '\n');
-        min_size = max_size = (int)fixed_value;
+        min_size = max_size = static_size;
 
-        printf("\nВведите минимальную степень [1-1000]:");
-        if (scanf("%llu", &min_exp) != 1 || min_exp < 1 || min_exp > 1000)
+        printf("\nВведите минимальную степень [1-1000000]:");
+        if (scanf("%llu", &min_exp) != 1 || min_exp < 1 || min_exp > 1000000)
             return UI_ERROR_INPUT;
         while (getchar() != '\n');
 
-        printf("\nВведите максимальную степень [%llu-1000]:", min_exp);
-        if (scanf("%llu", &max_exp) != 1 || max_exp < min_exp || max_exp > 1000)
+        printf("\nВведите максимальную степень [%llu-1000000]:", min_exp);
+        if (scanf("%llu", &max_exp) != 1 || max_exp < min_exp || max_exp > 1000000)
             return UI_ERROR_INPUT;
         while (getchar() != '\n');
     }
 
-    printf("\nВведите размер поля [0-100000] (0 = без модулей):");
-    if (scanf("%llu", &field_size) != 1 || field_size > 100000)
+    ULL max_number = 1ULL << (K + 1);
+
+    printf("\nВведите размер поля [0-%llu] (0 = без модулей):", max_number);
+    if (scanf("%llu", &field_size) != 1)
         return UI_ERROR_INPUT;
     while (getchar() != '\n');
 

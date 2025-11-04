@@ -424,11 +424,14 @@ int matrix_power(const Matrix* base, ULL exponent, Matrix** result)
 
     ULL exp = exponent;
 
+
+    // O(log(exp))
     while (exp > 0)
     {
         if (exp & 1)
         {
             Matrix* temp_result;
+            // O(size^3)
             error = matrix_multiply(result_matrix, temp_power, &temp_result);
             if (error != MATRIX_SUCCESS)
             {

@@ -1,6 +1,7 @@
 #include "../include/string_utils.h"
 
-int string_to_matrix(const char* str, ULL field_size, Matrix** result)
+int string_to_matrix(const char* str, ULL field_size,
+    Matrix** result)
 {
     if (!str)
     {
@@ -27,7 +28,8 @@ int string_to_matrix(const char* str, ULL field_size, Matrix** result)
     }
 
     int matrix_error;
-    matrix_error = matrix_create(rows, cols, field_size, result);
+    matrix_error = matrix_create(rows, cols, field_size,
+        result);
     if (matrix_error != MATRIX_SUCCESS)
     {
         return STRING_ERROR_CONVERSION;

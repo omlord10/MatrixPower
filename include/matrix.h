@@ -25,11 +25,13 @@ typedef struct Matrix
  * [OUT] result - указатель на созданную матрицу
  * [RETURN] MATRIX_SUCCESS или код ошибки MATRIX_STATUS
  */
-int matrix_create(int rows, int cols, ULL field_size, Matrix** result);
+int matrix_create(int rows, int cols, ULL field_size,
+    Matrix** result);
 
 /*
  * Освободить память, выделенную под матрицу.
- * Уничтожает структуру и внутренние данные, предотвращая утечку памяти.
+ * Уничтожает структуру и внутренние данные, предотвращая
+ * утечку памяти.
  * Безопасно при передаче NULL (не вызывает разыменования NULL).
  * [IN] matrix — указатель на матрицу для удаления
  * [RETURN] MATRIX_SUCCESS или код ошибки MATRIX_STATUS
@@ -40,7 +42,8 @@ int matrix_free(Matrix* matrix);
  * Создать копию матрицы src и вернуть её через result.
  * Полностью дублирует размеры, поле field_size и данные.
  * [IN] src — исходная матрица
- * [OUT] result — указатель на указатель, куда будет записана новая копия
+ * [OUT] result — указатель на указатель, куда будет записана
+ * новая копия
  * [RETURN] MATRIX_SUCCESS или код ошибки MATRIX_STATUS
  */
 int matrix_copy(const Matrix* src, Matrix** result);
@@ -53,7 +56,8 @@ int matrix_copy(const Matrix* src, Matrix** result);
  * [OUT] result — указатель на новую матрицу, содержащую сумму
  * [RETURN] MATRIX_SUCCESS или код ошибки MATRIX_STATUS
  */
-int matrix_sum(const Matrix* a, const Matrix* b, Matrix** result);
+int matrix_sum(const Matrix* a, const Matrix* b,
+    Matrix** result);
 
 /*
  * Вычесть матрицу b из матрицы a: a - b.
@@ -63,7 +67,8 @@ int matrix_sum(const Matrix* a, const Matrix* b, Matrix** result);
  * [OUT] result — указатель на матрицу результата
  * [RETURN] MATRIX_SUCCESS или код ошибки MATRIX_STATUS
  */
-int matrix_subtract(const Matrix* a, const Matrix* b, Matrix** result);
+int matrix_subtract(const Matrix* a, const Matrix* b,
+    Matrix** result);
 
 /*
  * Умножить матрицу a на скаляр scalar в поле field_size.
@@ -73,7 +78,8 @@ int matrix_subtract(const Matrix* a, const Matrix* b, Matrix** result);
  * [OUT] result — указатель на матрицу результата
  * [RETURN] MATRIX_SUCCESS или код ошибки MATRIX_STATUS
  */
-int matrix_scalar_multiply(const Matrix* a, ULL scalar, Matrix** result);
+int matrix_scalar_multiply(const Matrix* a, ULL scalar,
+    Matrix** result);
 
 /*
  * Транспонировать матрицу a (перевернуть строки и столбцы).
@@ -86,7 +92,8 @@ int matrix_transpose(const Matrix* a, Matrix** result);
 
 /*
  * Вырезать подматрицу из матрицы a по указанным индексам.
- * Диапазоны [start_row, end_row) и [start_col, end_col) должны быть корректными.
+ * Диапазоны [start_row, end_row) и [start_col, end_col)
+ * должны быть корректными.
  * [IN] a — исходная матрица
  * [IN] start_row — начальный индекс строки
  * [IN] end_row — конечный индекс строки (не включая)
@@ -95,21 +102,25 @@ int matrix_transpose(const Matrix* a, Matrix** result);
  * [OUT] result — указатель на вырезанную подматрицу
  * [RETURN] MATRIX_SUCCESS или код ошибки MATRIX_STATUS
  */
-int matrix_submatrix(const Matrix* a, int start_row, int end_row, int start_col, int end_col, Matrix** result);
+int matrix_submatrix(const Matrix* a, int start_row, int
+    end_row, int start_col, int end_col, Matrix** result);
 
 /*
  * Перемножить матрицы a и b: a × b.
- * Количество столбцов в a должно совпадать с количеством строк в b.
+ * Количество столбцов в a должно совпадать с количеством
+ * строк в b.
  * [IN] a — первая матрица (левый множитель)
  * [IN] b — вторая матрица (правый множитель)
  * [OUT] result — указатель на новую матрицу с произведением
  * [RETURN] MATRIX_SUCCESS или код ошибки MATRIX_STATUS
  */
-int matrix_multiply(const Matrix* a, const Matrix* b, Matrix** result);
+int matrix_multiply(const Matrix* a, const Matrix* b,
+    Matrix** result);
 
 /*
  * Умножить два числа по модулю (a * b) % mod.
- * Используется в арифметике поля field_size, предотвращая переполнение.
+ * Используется в арифметике поля field_size, предотвращая
+ * переполнение.
  * [IN] a — первый множитель
  * [IN] b — второй множитель
  * [IN] mod — модуль (если 0, операция выполняется без модуля)
@@ -126,11 +137,13 @@ ULL multiply_mod(ULL a, ULL b, ULL mod);
  * [OUT] result — указатель на результирующую матрицу
  * [RETURN] MATRIX_SUCCESS или код ошибки MATRIX_STATUS
  */
-int matrix_power(const Matrix* base, ULL exponent, Matrix** result);
+int matrix_power(const Matrix* base, ULL exponent,
+    Matrix** result);
 
 /*
  * Напечатать матрицу в стандартный поток вывода.
- * Формат вывода зависит от field_size (по модулю или обычные значения).
+ * Формат вывода зависит от field_size (по модулю или
+ * обычные значения).
  * Используется для отладки и проверки корректности.
  * [IN] matrix — указатель на матрицу для печати
  * [RETURN] MATRIX_SUCCESS или код ошибки MATRIX_STATUS

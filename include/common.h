@@ -1,5 +1,5 @@
-#ifndef LAB2_ERRORS_H
-#define LAB2_ERRORS_H
+#ifndef LAB2_COMMON_H
+#define LAB2_COMMON_H
 
 
 #include <stdint.h>
@@ -33,7 +33,7 @@ enum MATRIX_STATUS
     MATRIX_ERROR_INVALID_NUMBER
 };
 
-/* STRING_STATUS — коды ошибок при работе со строками/парсингом */
+/* STRING_STATUS — коды ошибок в работе со строками/парсингом */
 enum STRING_STATUS
 {
     STRING_SUCCESS = 0,
@@ -54,7 +54,7 @@ enum TEST_STATUS
     TEST_ERROR_OVERFLOW
 };
 
-/* UI_STATUS — коды ошибок пользовательского интерфейса/печати */
+/* UI_STATUS — коды ошибок интерфейса/печати */
 enum UI_STATUS
 {
     UI_SUCCESS = 0,
@@ -65,20 +65,21 @@ enum UI_STATUS
 
 /*
  * Получить текстовое сообщение для кода ошибки матрицы.
- * Возвращает строку с описанием ошибки (например, "Matrix dimension error").
- * Если код ошибки неизвестен, возвращает "Unknown matrix error".
+ * Возвращает строку с описанием ошибки.
+ * Если код ошибки неизвестен, возвращает "Unknown matrix error"
  * [IN] error — числовой код ошибки из enum MATRIX_STATUS
  * [RETURN] const char* — указатель на строку с сообщением
  */
 const char* get_matrix_error_message(int error);
 
 /*
- * Получить текстовое сообщение для кода ошибки работы со строками.
- * Возвращает строку с описанием ошибки (например, "String conversion error").
- * Если код ошибки неизвестен, возвращает "Unknown string error".
+ * Получить текстовое сообщение для кода ошибки работы
+ * со строками.
+ * Возвращает строку с описанием ошибки.
+ * Если код ошибки неизвестен, возвращает "Unknown string error"
  * [IN] error — числовой код ошибки из enum STRING_STATUS
  * [RETURN] const char* — указатель на строку с сообщением
  */
 const char* get_string_error_message(int error);
 
-#endif //LAB2_ERRORS_H
+#endif //LAB2_COMMON_H

@@ -9,9 +9,9 @@ typedef unsigned long long ULL;
 typedef struct Matrix
 {
     ULL** data;      /* указатель на массив строк */
+    ULL field_size;  /* модуль (размер конечного поля) */
     int rows;                       /* число строк */
     int cols;                       /* число столбцов */
-    ULL field_size;  /* модуль (размер конечного поля) */
 } Matrix;
 
 /* ---------- Функции (матрицы) ---------- */
@@ -33,10 +33,10 @@ int matrix_create(int rows, int cols, ULL field_size,
  * Уничтожает структуру и внутренние данные, предотвращая
  * утечку памяти.
  * Безопасно при передаче NULL (не вызывает разыменования NULL).
- * [IN] matrix — указатель на матрицу для удаления
+ * [IN] matrix — указатель на созданную матрицу для удаления
  * [RETURN] MATRIX_SUCCESS или код ошибки MATRIX_STATUS
  */
-int matrix_free(Matrix* matrix);
+int matrix_free(Matrix** matrix);
 
 /*
  * Создать копию матрицы src и вернуть её через result.
@@ -124,9 +124,10 @@ int matrix_multiply(const Matrix* a, const Matrix* b,
  * [IN] a — первый множитель
  * [IN] b — второй множитель
  * [IN] mod — модуль (если 0, операция выполняется без модуля)
- * [RETURN] результат умножения по модулю
+ * [OUT] result - указатель на результат умножения
+ * [RETURN] MATRIX_SUCCESS или код ошибки MATRIX_STATUS
  */
-ULL multiply_mod(ULL a, ULL b, ULL mod);
+int multiply_mod(ULL a, ULL b, ULL mod, ULL* result);
 
 /*
  * Возвести квадратную матрицу base в степень exponent.

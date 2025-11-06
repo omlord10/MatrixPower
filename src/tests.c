@@ -1,6 +1,5 @@
 #include "../include/tests.h"
 
-#define POSIX_C_SOURCE 199309L
 #define EXP 19 // [2^EXP;(2^EXP)-1)
 
 static inline uint64_t rand64(void)
@@ -171,8 +170,8 @@ int generate_test_cases(const char* filename, int min_size,
 
         free(matrix_str);
         free(result_str);
-        if (R) matrix_free(R);
-        matrix_free(M);
+        if (R) matrix_free(&R);
+        matrix_free(&M);
         count_tests++;
         successful_tests++;
     }
@@ -217,47 +216,47 @@ int file_operations_test()
     if (mode == 1) // фиксированная степень
     {
         printf("\nВведите фиксированную степень "
-               "[1-1000000]:");
+               "[1-100000000]:");
         if (scanf("%llu", &static_size) != 1 || static_size < 1
-            || static_size > 1000000)
+            || static_size > 1000000000000000000)
             return UI_ERROR_INPUT;
         while (getchar() != '\n');
         min_exp = max_exp = static_size;
 
         printf("\nВведите минимальный размер матрицы "
-               "[1-1000000]:");
+               "[1-100000000]:");
         if (scanf("%d", &min_size) != 1 || min_size < 1
-            || min_size > 1000000)
+            || min_size > 100000000)
             return UI_ERROR_INPUT;
         while (getchar() != '\n');
 
         printf("\nВведите максимальный размер матрицы "
-               "[%d-1000000]:", min_size);
+               "[%d-100000000]:", min_size);
         if (scanf("%d", &max_size) != 1 || max_size < min_size
-            || max_size > 1000000)
+            || max_size > 100000000)
             return UI_ERROR_INPUT;
         while (getchar() != '\n');
     }
     else // фиксированный размер матрицы
     {
         printf("\nВведите фиксированный размер матрицы "
-               "[1-1000000]:");
+               "[1-100000000]:");
         if (scanf("%llu", &static_size) != 1 || static_size < 1
-            || static_size > 1000000)
+            || static_size > 100000000)
             return UI_ERROR_INPUT;
         while (getchar() != '\n');
         min_size = max_size = static_size;
 
-        printf("\nВведите минимальную степень [1-1000000]:");
+        printf("\nВведите минимальную степень [1-100000000]:");
         if (scanf("%llu", &min_exp) != 1 || min_exp < 1 ||
-            min_exp > 1000000)
+            min_exp > 1000000000000000000)
             return UI_ERROR_INPUT;
         while (getchar() != '\n');
 
-        printf("\nВведите максимальную степень [%llu-1000000]:",
+        printf("\nВведите максимальную степень [%llu-100000000]:",
             min_exp);
         if (scanf("%llu", &max_exp) != 1 || max_exp < min_exp
-            || max_exp > 1000000)
+            || max_exp > 1000000000000000000)
             return UI_ERROR_INPUT;
         while (getchar() != '\n');
     }
@@ -366,7 +365,7 @@ int input_test()
 
         printf("Время выполнения: %llu наносекунд\n", dt_ns);
 
-        matrix_free(R);
+        matrix_free(&R);
     }
     else
     {
@@ -374,7 +373,7 @@ int input_test()
             get_matrix_error_message(pow_err));
     }
 
-    matrix_free(matrix);
+    matrix_free(&matrix);
     return UI_SUCCESS;
 }
 
@@ -394,14 +393,14 @@ int manual_test()
             matrix_print(m1);
             printf("^2 =\n");
             matrix_print(r1);
-            matrix_free(r1);
+            matrix_free(&r1);
         }
         else
         {
             printf("Ошибка: %s\n",
                 get_matrix_error_message(mat_error));
         }
-        matrix_free(m1);
+        matrix_free(&m1);
     }
     else
     {
@@ -421,14 +420,14 @@ int manual_test()
             matrix_print(m2);
             printf("^10 =\n");
             matrix_print(r2);
-            matrix_free(r2);
+            matrix_free(&r2);
         }
         else
         {
             printf("Ошибка: %s\n",
                 get_matrix_error_message(mat_error));
         }
-        matrix_free(m2);
+        matrix_free(&m2);
     }
     else
     {
@@ -448,14 +447,14 @@ int manual_test()
             matrix_print(m3);
             printf("^5 =\n");
             matrix_print(r3);
-            matrix_free(r3);
+            matrix_free(&r3);
         }
         else
         {
             printf("Ошибка: %s\n",
                 get_matrix_error_message(mat_error));
         }
-        matrix_free(m3);
+        matrix_free(&m3);
     }
     else
     {

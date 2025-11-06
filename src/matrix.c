@@ -1,23 +1,22 @@
 #include "../include/matrix.h"
 #include "../include/common.h"
 
-int matrix_create(int rows, int cols, ULL field_size,
-    Matrix** result)
+int matrix_create(int rows, int cols, ULL field_size, Matrix** result)
 {
-    if (rows < 1 || cols < 1)
-    {
-        return MATRIX_ERROR_INVALID_SIZE;
-    }
+    if (!result)
+        return MATRIX_ERROR_NULL_POINTER;
 
-    Matrix* matrix = (Matrix*)malloc(sizeof(Matrix));
+    if (rows < 1 || cols < 1)
+        return MATRIX_ERROR_INVALID_SIZE;
+
+    Matrix* matrix = malloc(sizeof(Matrix));
     if (!matrix)
-    {
         return MATRIX_ERROR_CREATION;
-    }
 
     matrix->rows = rows;
     matrix->cols = cols;
     matrix->field_size = field_size;
+    matrix->data = NULL;
 
     matrix->data = (ULL**)malloc(rows * sizeof(ULL*));
     if (!matrix->data)
@@ -45,8 +44,14 @@ int matrix_create(int rows, int cols, ULL field_size,
     return MATRIX_SUCCESS;
 }
 
-int matrix_free(Matrix* matrix)
+int matrix_free(Matrix** matrix_ptr)
 {
+    if (!matrix_ptr)
+    {
+        return MATRIX_SUCCESS;
+    }
+
+    Matrix* matrix = *matrix_ptr;
     if (!matrix)
     {
         return MATRIX_SUCCESS;
@@ -59,11 +64,16 @@ int matrix_free(Matrix* matrix)
             if (matrix->data[i])
             {
                 free(matrix->data[i]);
+                matrix->data[i] = NULL;
             }
         }
         free(matrix->data);
+        matrix->data = NULL;
     }
+
     free(matrix);
+    *matrix_ptr = NULL;
+
     return MATRIX_SUCCESS;
 }
 
@@ -74,11 +84,24 @@ int matrix_copy(const Matrix* src, Matrix** result)
         return MATRIX_ERROR_NULL_POINTER;
     }
 
+    if (*result != NULL)
+    {
+        matrix_free(result);
+    }
+
+    if (src == *result)
+    {
+        return MATRIX_ERROR_INVALID_ARGUMENT;
+    }
+
     int error;
     Matrix* dest;
     error = matrix_create(src->rows, src->cols, src->field_size,
         &dest);
-    if (error != MATRIX_SUCCESS) return error;
+    if (error != MATRIX_SUCCESS)
+    {
+        return error;
+    }
 
     for (int i = 0; i < src->rows; i++)
     {
@@ -92,11 +115,27 @@ int matrix_copy(const Matrix* src, Matrix** result)
     return MATRIX_SUCCESS;
 }
 
-ULL multiply_mod(ULL a, ULL b, ULL mod)
-{
-    if (mod == 0) return a * b;
 
-    ULL result = 0;
+int multiply_mod(ULL a, ULL b, ULL mod, ULL* result)
+{
+    if (!result)
+    {
+        return MATRIX_ERROR_NULL_POINTER;
+    }
+
+    *result = 0;
+
+    if (mod == 0)
+    {
+        if (a != 0 && b > ULLONG_MAX / a)
+        {
+            return MATRIX_ERROR_OVERFLOW;
+        }
+        *result = a * b;
+        return MATRIX_SUCCESS;
+    }
+
+    ULL res = 0;
     a %= mod;
     b %= mod;
 
@@ -104,31 +143,71 @@ ULL multiply_mod(ULL a, ULL b, ULL mod)
     {
         if (b & 1)
         {
-            result = (result + a) % mod;
+            res = (res + a) % mod;
         }
         a = (a * 2) % mod;
         b >>= 1;
     }
 
-    return result;
+    *result = res;
+    return MATRIX_SUCCESS;
 }
 
-int matrix_sum(const Matrix* a, const Matrix* b,
-    Matrix** result)
+int matrix_sum0(const Matrix* A, const Matrix* B, Matrix** R)
+{
+    Matrix* C;
+    matrix_create(A->rows, A->cols, A->field_size, &C);
+
+    for (int p = 0; p < A->rows; p++)
+    {
+        for (int q = 0; q < A->cols; q++)
+        {
+            ULL m = A->data[p][q];
+            ULL n = B->data[p][q];
+            ULL r;
+
+            if (A->field_size == 0)
+            {
+                r = m + n;
+            }
+            else
+            {
+                r = (m % A->field_size + n % A->field_size)
+                % A->field_size;
+            }
+
+            C->data[p][q] = r;
+        }
+    }
+
+    *R = C;
+    return 0;
+}
+
+
+int matrix_sum(const Matrix* a,const Matrix* b,Matrix** result)
 {
     if (!a || !b || !result)
     {
         return MATRIX_ERROR_NULL_POINTER;
     }
-    if (a->rows < 1 || a->cols < 1 || b->rows < 1
-        || b->cols < 1)
+
+    if (*result != NULL)
+    {
+        matrix_free(result);
+    }
+
+    if (a->rows < 1 || a->cols < 1 || b->rows < 1 ||
+        b->cols < 1)
     {
         return MATRIX_ERROR_INVALID_SIZE;
     }
+
     if (a->rows != b->rows || a->cols != b->cols)
     {
         return MATRIX_ERROR_DIMENSION;
     }
+
     if (a->field_size != b->field_size)
     {
         return MATRIX_ERROR_INVALID_FIELD;
@@ -138,27 +217,39 @@ int matrix_sum(const Matrix* a, const Matrix* b,
     Matrix* sum_matrix;
     error = matrix_create(a->rows, a->cols, a->field_size,
         &sum_matrix);
-    if (error != MATRIX_SUCCESS) return error;
-
-    if (a->field_size == 0)
+    if (error != MATRIX_SUCCESS)
     {
-        for (int i = 0; i < a->rows; i++)
-        {
-            for (int j = 0; j < a->cols; j++)
-            {
-                sum_matrix->data[i][j] = a->data[i][j]
-                + b->data[i][j];
-            }
-        }
+        return error;
     }
-    else
+
+    for (int i = 0; i < a->rows; i++)
     {
-        for (int i = 0; i < a->rows; i++)
+        for (int j = 0; j < a->cols; j++)
         {
-            for (int j = 0; j < a->cols; j++)
+            ULL x = a->data[i][j];
+            ULL y = b->data[i][j];
+
+            if (a->field_size == 0)
             {
-                sum_matrix->data[i][j] = (a->data[i][j]
-                    + b->data[i][j]) % a->field_size;
+                if (x > ULLONG_MAX - y)
+                {
+                    matrix_free(&sum_matrix);
+                    return MATRIX_ERROR_OVERFLOW;
+                }
+                sum_matrix->data[i][j] = x + y;
+            }
+            else
+            {
+                x %= a->field_size;
+                y %= a->field_size;
+
+                if (x > ULLONG_MAX - y)
+                {
+                    matrix_free(&sum_matrix);
+                    return MATRIX_ERROR_OVERFLOW;
+                }
+
+                sum_matrix->data[i][j] = (x+y) % a->field_size;
             }
         }
     }
@@ -167,6 +258,39 @@ int matrix_sum(const Matrix* a, const Matrix* b,
     return MATRIX_SUCCESS;
 }
 
+int matrix_subtract0(const Matrix* A, const Matrix* B,
+    Matrix** R)
+{
+    Matrix* C;
+    matrix_create(A->rows, A->cols, A->field_size, &C);
+
+    for (int p = 0; p < A->rows; p++)
+    {
+        for (int q = 0; q < A->cols; q++)
+        {
+            ULL m = A->data[p][q];
+            ULL n = B->data[p][q];
+            ULL r;
+
+            if (A->field_size == 0)
+            {
+                r = m - n;
+            }
+            else
+            {
+                r = ((m % A->field_size) -
+                    (n % A->field_size)) % A->field_size;
+            }
+
+            C->data[p][q] = r;
+        }
+    }
+
+    *R = C;
+    return 0;
+}
+
+
 int matrix_subtract(const Matrix* a, const Matrix* b,
     Matrix** result)
 {
@@ -174,15 +298,23 @@ int matrix_subtract(const Matrix* a, const Matrix* b,
     {
         return MATRIX_ERROR_NULL_POINTER;
     }
+
+    if (*result != NULL)
+    {
+        matrix_free(result);
+    }
+
     if (a->rows < 1 || a->cols < 1 || b->rows < 1
         || b->cols < 1)
     {
         return MATRIX_ERROR_INVALID_SIZE;
     }
+
     if (a->rows != b->rows || a->cols != b->cols)
     {
         return MATRIX_ERROR_DIMENSION;
     }
+
     if (a->field_size != b->field_size)
     {
         return MATRIX_ERROR_INVALID_FIELD;
@@ -192,34 +324,69 @@ int matrix_subtract(const Matrix* a, const Matrix* b,
     Matrix* sub_matrix;
     error = matrix_create(a->rows, a->cols, a->field_size,
         &sub_matrix);
-    if (error != MATRIX_SUCCESS) return error;
-
-    if (a->field_size == 0)
+    if (error != MATRIX_SUCCESS)
     {
-        for (int i = 0; i < a->rows; i++)
-        {
-            for (int j = 0; j < a->cols; j++)
-            {
-                sub_matrix->data[i][j] = a->data[i][j]
-                - b->data[i][j];
-            }
-        }
+        return error;
     }
-    else
+
+    for (int i = 0; i < a->rows; i++)
     {
-        for (int i = 0; i < a->rows; i++)
+        for (int j = 0; j < a->cols; j++)
         {
-            for (int j = 0; j < a->cols; j++)
+            ULL x = a->data[i][j];
+            ULL y = b->data[i][j];
+
+            if (a->field_size == 0)
             {
+                if (x < y)
+                {
+                    matrix_free(&sub_matrix);
+                    return MATRIX_ERROR_OVERFLOW;
+                }
+                sub_matrix->data[i][j] = x - y;
+            }
+            else
+            {
+                x %= a->field_size;
+                y %= a->field_size;
                 sub_matrix->data[i][j] =
-                    (a->data[i][j] - b->data[i][j] +
-                        a->field_size) % a->field_size;
+                    (x + a->field_size - y) % a->field_size;
             }
         }
     }
 
     *result = sub_matrix;
     return MATRIX_SUCCESS;
+}
+
+int matrix_scalar_multiply0(const Matrix* A, ULL s, Matrix** R)
+{
+    Matrix* C;
+    matrix_create(A->rows, A->cols, A->field_size, &C);
+
+    for (int i = 0; i < A->rows; i++)
+    {
+        for (int j = 0; j < A->cols; j++)
+        {
+            ULL x = A->data[i][j];
+            ULL r;
+
+            if (A->field_size == 0)
+            {
+                r = x * s;
+            }
+            else
+            {
+                r = (x % A->field_size * s % A->field_size)
+                % A->field_size;
+            }
+
+            C->data[i][j] = r;
+        }
+    }
+
+    *R = C;
+    return 0;
 }
 
 int matrix_scalar_multiply(const Matrix* a, ULL scalar,
@@ -229,6 +396,12 @@ int matrix_scalar_multiply(const Matrix* a, ULL scalar,
     {
         return MATRIX_ERROR_NULL_POINTER;
     }
+
+    if (*result != NULL)
+    {
+        matrix_free(result);
+    }
+
     if (a->rows < 1 || a->cols < 1)
     {
         return MATRIX_ERROR_INVALID_SIZE;
@@ -238,29 +411,39 @@ int matrix_scalar_multiply(const Matrix* a, ULL scalar,
     Matrix* scaled_matrix;
     error = matrix_create(a->rows, a->cols, a->field_size,
         &scaled_matrix);
-    if (error != MATRIX_SUCCESS) return error;
-
-    if (a->field_size == 0)
+    if (error != MATRIX_SUCCESS)
     {
-        for (int i = 0; i < a->rows; i++)
-        {
-            for (int j = 0; j < a->cols; j++)
-            {
-                scaled_matrix->data[i][j] = a->data[i][j]
-                * scalar;
-            }
-        }
+        return error;
     }
-    else
+
+    for (int i = 0; i < a->rows; i++)
     {
-        for (int i = 0; i < a->rows; i++)
+        for (int j = 0; j < a->cols; j++)
         {
-            for (int j = 0; j < a->cols; j++)
+            ULL x = a->data[i][j];
+            ULL res;
+
+            if (a->field_size == 0)
             {
-                scaled_matrix->data[i][j] =
-                    multiply_mod(a->data[i][j], scalar,
-                        a->field_size);
+                if (x != 0 && scalar > ULLONG_MAX / x)
+                {
+                    matrix_free(&scaled_matrix);
+                    return MATRIX_ERROR_OVERFLOW;
+                }
+                res = x * scalar;
             }
+            else
+            {
+                error = multiply_mod(x, scalar,
+                    a->field_size, &res);
+                if (error != MATRIX_SUCCESS)
+                {
+                    matrix_free(&scaled_matrix);
+                    return error;
+                }
+            }
+
+            scaled_matrix->data[i][j] = res;
         }
     }
 
@@ -274,6 +457,12 @@ int matrix_transpose(const Matrix* a, Matrix** result)
     {
         return MATRIX_ERROR_NULL_POINTER;
     }
+
+    if (*result != NULL)
+    {
+        matrix_free(result);
+    }
+
     if (a->rows < 1 || a->cols < 1)
     {
         return MATRIX_ERROR_INVALID_SIZE;
@@ -283,7 +472,10 @@ int matrix_transpose(const Matrix* a, Matrix** result)
     Matrix* transposed;
     error = matrix_create(a->cols, a->rows, a->field_size,
         &transposed);
-    if (error != MATRIX_SUCCESS) return error;
+    if (error != MATRIX_SUCCESS)
+    {
+        return error;
+    }
 
     for (int i = 0; i < a->rows; i++)
     {
@@ -297,6 +489,43 @@ int matrix_transpose(const Matrix* a, Matrix** result)
     return MATRIX_SUCCESS;
 }
 
+int matrix_multiply0(const Matrix* A, const Matrix* B,
+    Matrix** R)
+{
+    Matrix* C;
+    matrix_create(A->rows, B->cols, A->field_size, &C);
+
+    for (int i = 0; i < A->rows; i++)
+    {
+        for (int j = 0; j < B->cols; j++)
+        {
+            ULL sum = 0;
+
+            for (int k = 0; k < A->cols; k++)
+            {
+                ULL term;
+                if (A->field_size == 0)
+                {
+                    term = A->data[i][k] * B->data[k][j];
+                    sum += term;
+                }
+                else
+                {
+                    term = (A->data[i][k] % A->field_size *
+                            B->data[k][j] % A->field_size)
+                            % A->field_size;
+                    sum = (sum + term) % A->field_size;
+                }
+            }
+
+            C->data[i][j] = sum;
+        }
+    }
+
+    *R = C;
+    return 0;
+}
+
 int matrix_multiply(const Matrix* a, const Matrix* b,
     Matrix** result)
 {
@@ -304,15 +533,22 @@ int matrix_multiply(const Matrix* a, const Matrix* b,
     {
         return MATRIX_ERROR_NULL_POINTER;
     }
-    if (a->rows < 1 || a->cols < 1 || b->rows < 1
-        || b->cols < 1)
+
+    if (*result != NULL)
+    {
+        matrix_free(result);
+    }
+
+    if(a->rows < 1 || a->cols < 1 || b->rows < 1 || b->cols < 1)
     {
         return MATRIX_ERROR_INVALID_SIZE;
     }
+
     if (a->cols != b->rows)
     {
         return MATRIX_ERROR_DIMENSION;
     }
+
     if (a->field_size != b->field_size)
     {
         return MATRIX_ERROR_INVALID_FIELD;
@@ -322,39 +558,56 @@ int matrix_multiply(const Matrix* a, const Matrix* b,
     Matrix* product;
     error = matrix_create(a->rows, b->cols, a->field_size,
         &product);
-    if (error != MATRIX_SUCCESS) return error;
-
-    int i, j, k;
-    if (a->field_size == 0)
+    if (error != MATRIX_SUCCESS)
     {
-        for (i = 0; i < a->rows; i++)
-        {
-            for (j = 0; j < b->cols; j++)
-            {
-                ULL sum = 0;
-                for (k = 0; k < a->cols; k++)
-                {
-                    sum += a->data[i][k] * b->data[k][j];
-                }
-                product->data[i][j] = sum;
-            }
-        }
+        return error;
     }
-    else
+
+    for (int i = 0; i < a->rows; i++)
     {
-        for (i = 0; i < a->rows; i++)
+        for (int j = 0; j < b->cols; j++)
         {
-            for (j = 0; j < b->cols; j++)
+            ULL sum = 0;
+
+            for (int k = 0; k < a->cols; k++)
             {
-                ULL sum = 0;
-                for (k = 0; k < a->cols; k++)
+                ULL term;
+
+                if (a->field_size == 0)
                 {
-                    sum = (sum + multiply_mod(a->data[i][k],
-                        b->data[k][j], a->field_size)) %
-                            a->field_size;
+                    if ((a->data[i][k] != 0) && (
+                        b->data[k][j] > ULLONG_MAX /
+                        a->data[i][k]))
+                    {
+                        matrix_free(&product);
+                        return MATRIX_ERROR_OVERFLOW;
+                    }
+
+                    term = a->data[i][k] * b->data[k][j];
+
+                    if (sum > ULLONG_MAX - term)
+                    {
+                        matrix_free(&product);
+                        return MATRIX_ERROR_OVERFLOW;
+                    }
+
+                    sum += term;
                 }
-                product->data[i][j] = sum;
+                else
+                {
+                    error = multiply_mod(a->data[i][k],
+                        b->data[k][j],a->field_size, &term);
+                    if (error != MATRIX_SUCCESS)
+                    {
+                        matrix_free(&product);
+                        return error;
+                    }
+
+                    sum = (sum + term) % a->field_size;
+                }
             }
+
+            product->data[i][j] = sum;
         }
     }
 
@@ -362,6 +615,25 @@ int matrix_multiply(const Matrix* a, const Matrix* b,
     return MATRIX_SUCCESS;
 }
 
+int matrix_submatrix0(const Matrix* A, int sr, int er, int sc,
+    int ec, Matrix** R)
+{
+    int sub_rows = er - sr + 1;
+    int sub_cols = ec - sc + 1;
+    Matrix* C;
+    matrix_create(sub_rows, sub_cols, A->field_size, &C);
+
+    for (int i = 0; i < sub_rows; i++)
+    {
+        for (int j = 0; j < sub_cols; j++)
+        {
+            C->data[i][j] = A->data[sr + i][sc + j];
+        }
+    }
+
+    *R = C;
+    return 0;
+}
 
 int matrix_submatrix(const Matrix* a, int start_row,
     int end_row, int start_col, int end_col,
@@ -405,97 +677,92 @@ int matrix_power(const Matrix* base, ULL exponent,
     Matrix** result)
 {
     if (!base || !result)
-    {
         return MATRIX_ERROR_NULL_POINTER;
-    }
+
     if (base->rows != base->cols)
-    {
         return MATRIX_ERROR_NOT_SQUARE;
+
+    if (*result != NULL)
+    {
+        matrix_free(result);
     }
 
     int error;
-    Matrix* result_matrix;
-    Matrix* temp_power;
+    Matrix* res_matrix = NULL;
+    Matrix* temp_power = NULL;
 
     if (exponent == 0)
     {
         error = matrix_create(base->rows, base->cols,
-            base->field_size, &result_matrix);
-        if (error != MATRIX_SUCCESS) return error;
+            base->field_size, &res_matrix);
+        if (error != MATRIX_SUCCESS)
+            return error;
 
         for (int i = 0; i < base->rows; i++)
-        {
-            result_matrix->data[i][i] = 1;
-        }
+            res_matrix->data[i][i] = 1;
 
-        *result = result_matrix;
+        *result = res_matrix;
         return MATRIX_SUCCESS;
     }
 
     if (exponent == 1)
-    {
         return matrix_copy(base, result);
-    }
 
-    error = matrix_create(base->rows, base->cols,
-        base->field_size, &result_matrix);
-    if (error != MATRIX_SUCCESS) return error;
+    error = matrix_create(base->rows, base->cols, base->field_size,
+        &res_matrix);
+    if (error != MATRIX_SUCCESS)
+        return error;
+
     for (int i = 0; i < base->rows; i++)
-    {
-        result_matrix->data[i][i] = 1;
-    }
+        res_matrix->data[i][i] = 1;
 
     error = matrix_copy(base, &temp_power);
     if (error != MATRIX_SUCCESS)
     {
-        matrix_free(result_matrix);
+        matrix_free(&res_matrix);
         return error;
     }
 
     ULL exp = exponent;
-
-
-    // O(log(exp))
     while (exp > 0)
     {
         if (exp & 1)
         {
-            Matrix* temp_result;
-            // O(size^3)
-            error = matrix_multiply(result_matrix,
-                temp_power, &temp_result);
+            Matrix* temp_result = NULL;
+            error = matrix_multiply(res_matrix, temp_power,
+                &temp_result);
             if (error != MATRIX_SUCCESS)
             {
-                matrix_free(result_matrix);
-                matrix_free(temp_power);
+                matrix_free(&res_matrix);
+                matrix_free(&temp_power);
                 return error;
             }
-            matrix_free(result_matrix);
-            result_matrix = temp_result;
+            matrix_free(&res_matrix);
+            res_matrix = temp_result;
         }
 
         exp >>= 1;
+
         if (exp > 0)
         {
-            Matrix* temp_square;
-            error = matrix_multiply(temp_power,
-                temp_power, &temp_square);
+            Matrix* temp_square = NULL;
+            error = matrix_multiply(temp_power, temp_power,
+                &temp_square);
             if (error != MATRIX_SUCCESS)
             {
-                matrix_free(result_matrix);
-                matrix_free(temp_power);
+                matrix_free(&res_matrix);
+                matrix_free(&temp_power);
                 return error;
             }
-            matrix_free(temp_power);
+            matrix_free(&temp_power);
             temp_power = temp_square;
         }
     }
 
-    matrix_free(temp_power);
-    *result = result_matrix;
+    matrix_free(&temp_power);
+    *result = res_matrix;
     return MATRIX_SUCCESS;
 }
-
 
 int matrix_print(const Matrix* matrix)
 {
@@ -521,70 +788,82 @@ int matrix_print(const Matrix* matrix)
 
 int matrix_power0(const Matrix* A, ULL n, Matrix** R)
 {
+    if (!A || !R)
+        return MATRIX_ERROR_NULL_POINTER;
+
+    if (A->rows != A->cols)
+        return MATRIX_ERROR_NOT_SQUARE;
+
+    if (*R != NULL)
+        matrix_free(R);
+
     int err;
+    Matrix* result = NULL;
+    Matrix* temp = NULL;
+
     if (n == 0)
     {
-        err = matrix_create(A->rows, A->cols, A->field_size, R);
+        err = matrix_create(A->rows, A->cols, A->field_size,
+            &result);
         if (err != MATRIX_SUCCESS) return err;
         for (int i = 0; i < A->rows; i++)
-        {
-            (*R)->data[i][i] = 1;
-        }
+            result->data[i][i] = 1;
+
+        *R = result;
         return MATRIX_SUCCESS;
     }
+
     if (n == 1)
-    {
         return matrix_copy(A, R);
-    }
-    Matrix* result;
+
     err = matrix_create(A->rows, A->cols, A->field_size,
         &result);
     if (err != MATRIX_SUCCESS) return err;
     for (int i = 0; i < A->rows; i++)
-    {
         result->data[i][i] = 1;
-    }
-    Matrix* temp;
+
     err = matrix_copy(A, &temp);
     if (err != MATRIX_SUCCESS)
     {
-        matrix_free(result);
+        matrix_free(&result);
         return err;
     }
+
     ULL exp = n;
     while (exp > 0)
     {
         if (exp & 1)
         {
-            Matrix* new_result;
-            err = matrix_multiply(result, temp,
-                &new_result);
+            Matrix* new_result = NULL;
+            err = matrix_multiply(result, temp, &new_result);
             if (err != MATRIX_SUCCESS)
             {
-                matrix_free(result);
-                matrix_free(temp);
+                matrix_free(&result);
+                matrix_free(&temp);
                 return err;
             }
-            matrix_free(result);
+            matrix_free(&result);
             result = new_result;
         }
+
         exp >>= 1;
+
         if (exp > 0)
         {
-            Matrix* new_temp;
-            err = matrix_multiply(temp, temp,
-                &new_temp);
+            Matrix* new_temp = NULL;
+            err = matrix_multiply(temp, temp, &new_temp);
             if (err != MATRIX_SUCCESS)
             {
-                matrix_free(result);
-                matrix_free(temp);
+                matrix_free(&result);
+                matrix_free(&temp);
                 return err;
             }
-            matrix_free(temp);
+            matrix_free(&temp);
             temp = new_temp;
         }
     }
-    matrix_free(temp);
+
+    matrix_free(&temp);
     *R = result;
     return MATRIX_SUCCESS;
 }

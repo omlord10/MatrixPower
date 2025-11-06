@@ -7,7 +7,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <unistd.h>
+#include <limits.h>
+
 
 /* ---------- Коды ошибок (общие / для UI) ---------- */
 /* MAIN_STATUS — общий код возврата для main/утилит */
@@ -30,7 +31,9 @@ enum MATRIX_STATUS
     MATRIX_ERROR_CREATION,
     MATRIX_ERROR_NULL_POINTER,
     MATRIX_ERROR_INVALID_FIELD,
-    MATRIX_ERROR_INVALID_NUMBER
+    MATRIX_ERROR_INVALID_NUMBER,
+    MATRIX_ERROR_INVALID_ARGUMENT,
+    MATRIX_ERROR_OVERFLOW
 };
 
 /* STRING_STATUS — коды ошибок в работе со строками/парсингом */

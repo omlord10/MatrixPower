@@ -30,7 +30,7 @@ enum MATRIX_STATUS
     MATRIX_ERROR_NOT_SQUARE,
     MATRIX_ERROR_CREATION,
     MATRIX_ERROR_NULL_POINTER,
-    MATRIX_ERROR_INVALID_FIELD,
+    MATRIX_ERROR_INVALID_MODULO,
     MATRIX_ERROR_INVALID_NUMBER,
     MATRIX_ERROR_INVALID_ARGUMENT,
     MATRIX_ERROR_OVERFLOW
@@ -84,5 +84,7 @@ const char* get_matrix_error_message(int error);
  * [RETURN] const char* — указатель на строку с сообщением
  */
 const char* get_string_error_message(int error);
+
+
 
 #endif //LAB2_COMMON_H

@@ -18,11 +18,6 @@ static inline uint32_t rand32(void)
 
 static int get_time_ns(int64_t* out_ns)
 {
-    if (out_ns == NULL)
-    {
-        return TEST_ERROR_INVALID_PARAMS;
-    }
-
     struct timespec ts;
 
     if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0)
@@ -104,9 +99,9 @@ int generate_test_cases(const char* filename, int min_size,
         return TEST_ERROR_FILE_WRITE;
     }
 
-    fprintf(csv, "matrix_size,exponent,field_size,"
+    fprintf(csv, "matrix_size,exponent,modulo,"
                  "computation_time_ns\n");
-    fprintf(short_out, "matrix_size exponent field_size "
+    fprintf(short_out, "matrix_size exponent modulo "
                        "computation_time_ns\n");
 
     srand((unsigned)time(NULL));
@@ -216,47 +211,49 @@ int file_operations_test()
     if (mode == 1) // фиксированная степень
     {
         printf("\nВведите фиксированную степень "
-               "[1-100000000]:");
+               "[1-18446744073709551615]:");
         if (scanf("%llu", &static_size) != 1 || static_size < 1
-            || static_size > 1000000000000000000)
+            || static_size > 0xFFFFFFFFFFFFFFFFULL)
             return UI_ERROR_INPUT;
         while (getchar() != '\n');
         min_exp = max_exp = static_size;
 
         printf("\nВведите минимальный размер матрицы "
-               "[1-100000000]:");
+               "[1-1000]:");
         if (scanf("%d", &min_size) != 1 || min_size < 1
-            || min_size > 100000000)
+            || min_size > 1000)
             return UI_ERROR_INPUT;
         while (getchar() != '\n');
 
         printf("\nВведите максимальный размер матрицы "
-               "[%d-100000000]:", min_size);
+               "[%d-1000]:", min_size);
         if (scanf("%d", &max_size) != 1 || max_size < min_size
-            || max_size > 100000000)
+            || max_size > 1000)
             return UI_ERROR_INPUT;
         while (getchar() != '\n');
     }
     else // фиксированный размер матрицы
     {
         printf("\nВведите фиксированный размер матрицы "
-               "[1-100000000]:");
-        if (scanf("%llu", &static_size) != 1 || static_size < 1
-            || static_size > 100000000)
+               "[1-1000]:");
+        if (scanf("%d", &min_size) != 1 || min_size < 1
+            || min_size > 1000)
             return UI_ERROR_INPUT;
         while (getchar() != '\n');
-        min_size = max_size = static_size;
+        max_size = min_size;
 
-        printf("\nВведите минимальную степень [1-100000000]:");
+        printf("\nВведите минимальную степень [1-184467440737095"
+               "51615]:");
         if (scanf("%llu", &min_exp) != 1 || min_exp < 1 ||
-            min_exp > 1000000000000000000)
+            min_exp > 0xFFFFFFFFFFFFFFFFULL)
             return UI_ERROR_INPUT;
         while (getchar() != '\n');
 
-        printf("\nВведите максимальную степень [%llu-100000000]:",
+        printf("\nВведите максимальную степень [%llu-18446744073"
+               "709551615]:",
             min_exp);
         if (scanf("%llu", &max_exp) != 1 || max_exp < min_exp
-            || max_exp > 1000000000000000000)
+            || max_exp > 0xFFFFFFFFFFFFFFFFULL)
             return UI_ERROR_INPUT;
         while (getchar() != '\n');
     }
@@ -382,11 +379,11 @@ int manual_test()
     printf("=== ТЕСТИРОВАНИЕ С ИЗВЕСТНЫМИ ДАННЫМИ ===\n");
 
     printf("\nТест 1: Матрица 2x2 в степени 2\n");
-    Matrix* m1;
+    Matrix* m1 = NULL;
     int str_error = string_to_matrix("(1,2;3,4)", 100, &m1);
     if (str_error == STRING_SUCCESS)
     {
-        Matrix* r1;
+        Matrix* r1 = NULL;
         int mat_error = matrix_power(m1, 2, &r1);
         if (mat_error == MATRIX_SUCCESS)
         {
@@ -409,11 +406,11 @@ int manual_test()
     }
 
     printf("\nТест 2: Матрица 2x2 в степени 10\n");
-    Matrix* m2;
+    Matrix* m2 = NULL;
     str_error = string_to_matrix("(1,1;1,0)", 100, &m2);
     if (str_error == STRING_SUCCESS)
     {
-        Matrix* r2;
+        Matrix* r2 = NULL;
         int mat_error = matrix_power(m2, 10, &r2);
         if (mat_error == MATRIX_SUCCESS)
         {
@@ -436,11 +433,11 @@ int manual_test()
     }
 
     printf("\nТест 3: Единичная матрица в степени 5\n");
-    Matrix* m3;
+    Matrix* m3 = NULL;
     str_error = string_to_matrix("(1,0;0,1)", 100, &m3);
     if (str_error == STRING_SUCCESS)
     {
-        Matrix* r3;
+        Matrix* r3 = NULL;
         int mat_error = matrix_power(m3, 5, &r3);
         if (mat_error == MATRIX_SUCCESS)
         {

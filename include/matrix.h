@@ -9,7 +9,7 @@ typedef unsigned long long ULL;
 typedef struct Matrix
 {
     ULL** data;      /* указатель на массив строк */
-    ULL field_size;  /* модуль (размер конечного поля) */
+    ULL modulo;      /* модуль (размер конечного поля) */
     int rows;                       /* число строк */
     int cols;                       /* число столбцов */
 } Matrix;
@@ -17,15 +17,15 @@ typedef struct Matrix
 /* ---------- Функции (матрицы) ---------- */
 
 /*
- * Создать матрицу rows x cols, поле field_size.
+ * Создать матрицу rows x cols, поле modulo.
  * result — выходной параметр (адрес указателя на Matrix).
  * [IN] rows - количество строк матрицы
  * [IN] cols - количество столбцов матрицы
- * [IN] field_size - размер данных (по умолчанию, 0)
+ * [IN] modulo - размер данных (по умолчанию, 0)
  * [OUT] result - указатель на созданную матрицу
  * [RETURN] MATRIX_SUCCESS или код ошибки MATRIX_STATUS
  */
-int matrix_create(int rows, int cols, ULL field_size,
+int matrix_create(int rows, int cols, ULL modulo,
     Matrix** result);
 
 /*
@@ -36,11 +36,11 @@ int matrix_create(int rows, int cols, ULL field_size,
  * [IN] matrix — указатель на созданную матрицу для удаления
  * [RETURN] MATRIX_SUCCESS или код ошибки MATRIX_STATUS
  */
-int matrix_free(Matrix** matrix);
+void matrix_free(Matrix** matrix);
 
 /*
  * Создать копию матрицы src и вернуть её через result.
- * Полностью дублирует размеры, поле field_size и данные.
+ * Полностью дублирует размеры, поле modulo и данные.
  * [IN] src — исходная матрица
  * [OUT] result — указатель на указатель, куда будет записана
  * новая копия
@@ -50,7 +50,7 @@ int matrix_copy(const Matrix* src, Matrix** result);
 
 /*
  * Сложить две матрицы одинакового размера: a + b.
- * Операция выполняется в поле field_size, если оно задано.
+ * Операция выполняется в поле modulo, если оно задано.
  * [IN] a — первая матрица
  * [IN] b — вторая матрица
  * [OUT] result — указатель на новую матрицу, содержащую сумму
@@ -61,7 +61,7 @@ int matrix_sum(const Matrix* a, const Matrix* b,
 
 /*
  * Вычесть матрицу b из матрицы a: a - b.
- * Операция выполняется в поле field_size, если оно задано.
+ * Операция выполняется в поле modulo, если оно задано.
  * [IN] a — уменьшаемое
  * [IN] b — вычитаемое
  * [OUT] result — указатель на матрицу результата
@@ -71,7 +71,7 @@ int matrix_subtract(const Matrix* a, const Matrix* b,
     Matrix** result);
 
 /*
- * Умножить матрицу a на скаляр scalar в поле field_size.
+ * Умножить матрицу a на скаляр scalar в поле modulo.
  * Каждое значение элемента матрицы умножается на scalar.
  * [IN] a — исходная матрица
  * [IN] scalar — множитель
@@ -119,7 +119,7 @@ int matrix_multiply(const Matrix* a, const Matrix* b,
 
 /*
  * Умножить два числа по модулю (a * b) % mod.
- * Используется в арифметике поля field_size, предотвращая
+ * Используется в арифметике поля modulo, предотвращая
  * переполнение.
  * [IN] a — первый множитель
  * [IN] b — второй множитель
@@ -132,7 +132,7 @@ int multiply_mod(ULL a, ULL b, ULL mod, ULL* result);
 /*
  * Возвести квадратную матрицу base в степень exponent.
  * Используется метод бинарного возведения для эффективности.
- * Операции выполняются в поле field_size.
+ * Операции выполняются в поле modulo.
  * [IN] base — квадратная матрица (n x n)
  * [IN] exponent — показатель степени
  * [OUT] result — указатель на результирующую матрицу
@@ -143,7 +143,7 @@ int matrix_power(const Matrix* base, ULL exponent,
 
 /*
  * Напечатать матрицу в стандартный поток вывода.
- * Формат вывода зависит от field_size (по модулю или
+ * Формат вывода зависит от modulo (по модулю или
  * обычные значения).
  * Используется для отладки и проверки корректности.
  * [IN] matrix — указатель на матрицу для печати

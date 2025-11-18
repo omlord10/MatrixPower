@@ -1,6 +1,8 @@
 #include "../include/string_utils.h"
+#include "../include/inline_expansion.h"
 
-int string_to_matrix0(const char* input_str, ULL field_size, Matrix** matrix)
+int string_to_matrix0(const char* input_str, ULL field_size,
+                      Matrix** matrix)
 {
     if (!input_str || !matrix)
         return STRING_ERROR_NULL_POINTER;
@@ -23,16 +25,16 @@ int string_to_matrix0(const char* input_str, ULL field_size, Matrix** matrix)
     int row_index = 0, col_index = 0;
     char buffer[32];
     int buffer_pos = 0;
-    int inside_parens = 0;
+    int inside = 0;
 
     for (size_t i = 0; i < len; i++)
     {
         char c = input_str[i];
-        if (c == '(') { inside_parens = 1; continue; }
+        if (c == '(') { inside = 1; continue; }
         else if (c == ')') { break; }
-        if (!inside_parens) continue;
+        if (!inside) continue;
 
-        if (c == ',' || c == ';' || c == ')')
+        if (c == ',' || c == ';')
         {
             if (buffer_pos > 0)
             {
@@ -70,17 +72,13 @@ int string_to_matrix0(const char* input_str, ULL field_size, Matrix** matrix)
     return STRING_SUCCESS;
 }
 
-int string_to_matrix(const char* str, ULL field_size, Matrix** result)
+int string_to_matrix(const char* str, ULL field_size,
+    Matrix** result)
 {
-    if (!str || !result)
-        return STRING_ERROR_NULL_POINTER;
-
-    if (*result != NULL)
-        matrix_free(result);
-
+    int error = string_to_matrix_check(str, result);
+    if (error != STRING_SUCCESS) return error;
+    if (*result != NULL) matrix_free(result);
     size_t len = strlen(str);
-    if (len < 3)
-        return STRING_ERROR_INVALID_FORMAT;
 
     int rows = 1, cols = 1;
     for (size_t i = 1; i < len - 1; i++)
@@ -89,7 +87,8 @@ int string_to_matrix(const char* str, ULL field_size, Matrix** result)
         else if (str[i] == ',' && rows == 1) cols++;
     }
 
-    int matrix_error = matrix_create(rows, cols, field_size, result);
+    int matrix_error = matrix_create(rows, cols, field_size,
+        result);
     if (matrix_error != MATRIX_SUCCESS)
         return STRING_ERROR_CONVERSION;
 
@@ -105,7 +104,7 @@ int string_to_matrix(const char* str, ULL field_size, Matrix** result)
         else if (c == ')') { break; }
         if (!inside_parentheses) continue;
 
-        if (c == ';' || c == ',' || c == ')')
+        if (c == ';' || c == ',')
         {
             if (buf_index > 0)
             {
@@ -164,8 +163,8 @@ int matrix_to_string0(const Matrix* m, char** s)
         for (int j = 0; j < m->cols; j++)
         {
             ULL n = m->data[i][j];
-            if (m->field_size != 0)
-                n %= m->field_size;
+            if (m->modulo != 0)
+                n %= m->modulo;
 
             int digits = (n == 0) ? 1 : 0;
             ULL tmp = n;
@@ -196,8 +195,8 @@ int matrix_to_string0(const Matrix* m, char** s)
         for (int j = 0; j < m->cols; j++)
         {
             ULL n = m->data[i][j];
-            if (m->field_size != 0)
-                n %= m->field_size;
+            if (m->modulo != 0)
+                n %= m->modulo;
 
             char buffer[32];
             int buf_pos = 0;
@@ -211,7 +210,7 @@ int matrix_to_string0(const Matrix* m, char** s)
                 int digit_count = 0;
                 while (tmp > 0)
                 {
-                    digits[digit_count++] = '0' + (tmp % 10);
+                    digits[digit_count++] = (char)('0' + (tmp % 10));
                     tmp /= 10;
                 }
                 for (int k = digit_count - 1; k >= 0; k--)
@@ -237,17 +236,13 @@ int matrix_to_string0(const Matrix* m, char** s)
 
 int matrix_to_string(const Matrix* matrix, char** result)
 {
-    if (!matrix || !result)
-        return STRING_ERROR_NULL_POINTER;
-
+    int error = matrix_to_string_check(matrix, result);
+    if (error != STRING_SUCCESS) return error;
     if (*result != NULL)
     {
         free(*result);
         *result = NULL;
     }
-
-    if (matrix->rows <= 0 || matrix->cols <= 0)
-        return STRING_ERROR_INVALID_FORMAT;
 
     int total_chars = 2; // '(' и ')'
 
@@ -256,8 +251,8 @@ int matrix_to_string(const Matrix* matrix, char** result)
         for (int j = 0; j < matrix->cols; j++)
         {
             ULL num = matrix->data[i][j];
-            if (matrix->field_size != 0)
-                num %= matrix->field_size;
+            if (matrix->modulo != 0)
+                num %= matrix->modulo;
 
             int digits = (num == 0) ? 1 : 0;
             ULL tmp = num;
@@ -289,8 +284,8 @@ int matrix_to_string(const Matrix* matrix, char** result)
         for (int j = 0; j < matrix->cols; j++)
         {
             ULL num = matrix->data[i][j];
-            if (matrix->field_size != 0)
-                num %= matrix->field_size;
+            if (matrix->modulo != 0)
+                num %= matrix->modulo;
 
             char buffer[32];
             int buf_pos = 0;
@@ -304,7 +299,7 @@ int matrix_to_string(const Matrix* matrix, char** result)
                 int digit_count = 0;
                 while (tmp > 0)
                 {
-                    digits[digit_count++] = '0' + (tmp % 10);
+                    digits[digit_count++] = (char)('0' + (tmp % 10));
                     tmp /= 10;
                 }
                 for (int k = digit_count - 1; k >= 0; k--)

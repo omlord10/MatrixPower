@@ -19,7 +19,7 @@ int matrix_to_string(const Matrix* matrix, char** result);
  * Строка должна содержать элементы через ',' и строки
  * через ';'.
  * [IN] str — входная строка с данными матрицы
- * [IN] field_size — размер поля для модульной арифметики
+ * [IN] modulo — размер поля для модульной арифметики
  * [OUT] result — указатель на созданную матрицу
  * [RETURN] STRING_SUCCESS или код ошибки STRING_STATUS
  */

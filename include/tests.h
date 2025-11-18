@@ -5,9 +5,9 @@
 
 /*
  * Сгенерировать случайную квадратную матрицу size x size.
- * Все элементы — случайные числа по модулю field_size.
+ * Все элементы — случайные числа по модулю modulo.
  * [IN] size — размер матрицы (количество строк и столбцов)
- * [IN] field_size — размер конечного поля для модульной
+ * [IN] modulo — размер конечного поля для модульной
  * арифметики
  * [OUT] result — указатель на созданную матрицу
  * [RETURN] MATRIX_SUCCESS или код ошибки MATRIX_STATUS
@@ -21,9 +21,9 @@ int generate_random_matrix(int size, ULL field_size,
  * - Измерение времени делается через
  *   clock_gettime(CLOCK_MONOTONIC).
  * - Формируется два файла:
- *     output-short.txt   (matrix_size exponent field_size
+ *     output-short.txt   (matrix_size exponent modulo
  *     computation_time_ns)
- *     filename (CSV)     (matrix_size,exponent,field_size,
+ *     filename (CSV)     (matrix_size,exponent,modulo,
  *     computation_time_ns)
 
  * [IN] filename — имя выходного CSV-файла
@@ -31,7 +31,7 @@ int generate_random_matrix(int size, ULL field_size,
  * [IN] num_tests — количество тестов
  * [IN] min_exponent, max_exponent — диапазон степеней
  *  для возведения матрицы
- * [IN] field_size — размер конечного поля
+ * [IN] modulo — размер конечного поля
  * [RETURN] TEST_SUCCESS или код ошибки TEST_STATUS
  */
 
